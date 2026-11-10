@@ -26,6 +26,7 @@ import io.appium.espressoserver.lib.helpers.StringHelpers
 import io.appium.espressoserver.lib.helpers.setAccessibilityServiceState
 import io.appium.espressoserver.lib.http.response.AppiumResponse
 import io.appium.espressoserver.lib.http.response.BaseResponse
+import io.appium.espressoserver.lib.llm.UltronSnapshots
 import java.io.IOException
 import java.net.SocketException
 import java.util.LinkedHashMap
@@ -83,7 +84,7 @@ abstract class ServerBase : NanoHTTPD(DEFAULT_PORT) {
     override fun serve(session: IHTTPSession): Response {
         val files = LinkedHashMap<String, String>()
         val response = try {
-            session.parseBody(files)
+            parseRequestBody(session, files)
             router!!.route(session.uri, session.method, files)
         } catch (e: Exception) {
             when (e) {
@@ -111,6 +112,16 @@ abstract class ServerBase : NanoHTTPD(DEFAULT_PORT) {
         }
     }
 
+    internal fun parseRequestBody(session: IHTTPSession, files: MutableMap<String, String>) {
+        // JSON defaults to UTF-8. NanoHTTPD 2.3.1 otherwise decodes a Content-Type without
+        // charset as US-ASCII, replacing non-ASCII bytes before Gson sees them.
+        val contentType = ContentType(session.headers["content-type"])
+        if ("application/json".equals(contentType.contentType, ignoreCase = true)) {
+            session.headers["content-type"] = contentType.tryUTF8().contentTypeHeader
+        }
+        session.parseBody(files)
+    }
+
     @Throws(IOException::class)
     override fun start() {
         if (super.isAlive()) {
@@ -136,6 +147,7 @@ abstract class ServerBase : NanoHTTPD(DEFAULT_PORT) {
 
         AndroidLogger.info("\nRunning Appium Espresso Server at port $DEFAULT_PORT\n")
         router = Router(this)
+        UltronSnapshots.reset()
     }
 
     private fun setCustomFailureHandler() =
@@ -144,6 +156,7 @@ abstract class ServerBase : NanoHTTPD(DEFAULT_PORT) {
         )
 
     override fun stop() {
+        UltronSnapshots.reset()
         super.stop()
         AndroidLogger.info("\nStopping Appium Espresso at port $DEFAULT_PORT\n")
     }

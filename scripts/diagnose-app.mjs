@@ -62,7 +62,7 @@ async function main() {
       const report = await runDiagnosis(appInput, serverDefaults);
 
       LOG.info(`App: ${appInput.kind} at ${appInput.path}`);
-      LOG.info(`Driver: appium-espresso-driver@${serverDefaults.driverVersion}`);
+      LOG.info(`Driver: ultron-omni-driver@${serverDefaults.driverVersion}`);
       if (appInput.sources?.length) {
         LOG.info(`Scanned: ${appInput.sources.slice(0, 8).join(', ')}${appInput.sources.length > 8 ? '…' : ''}`);
       }

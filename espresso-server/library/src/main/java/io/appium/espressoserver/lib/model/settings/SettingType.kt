@@ -17,5 +17,6 @@
 package io.appium.espressoserver.lib.model.settings
 
 enum class SettingType(var setting: AbstractSetting) {
-    DRIVER(DriverSetting())
+    DRIVER(DriverSetting()),
+    ULTRON_SNAPSHOT_ENABLED(UltronSnapshotSetting())
 }

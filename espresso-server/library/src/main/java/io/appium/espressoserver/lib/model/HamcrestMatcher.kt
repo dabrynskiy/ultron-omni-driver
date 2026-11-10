@@ -23,12 +23,15 @@ import com.google.gson.JsonParseException
 import com.google.gson.annotations.JsonAdapter
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidSelectorException
+import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
 import io.appium.espressoserver.lib.helpers.GsonParserHelpers
 import io.appium.espressoserver.lib.helpers.ReflectionUtils.invokeStaticMethod
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers
 import java.lang.reflect.Type
+import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KClass
+import io.appium.espressoserver.lib.helpers.reflection.ClassUtils
 
 const val CLASS_SUFFIX = ".class"
 
@@ -45,44 +48,58 @@ data class HamcrestMatcher(
     val scope: HamcrestMatcher? = null
 ) {
 
-    private fun argsWithTypes(): List<*> {
-        return this.args
-                .map {
-                    if (it !is String) {
-                        return@map it
-                    }
-
-                    var className = it
-                    if (it.endsWith(CLASS_SUFFIX)) {
-                        className = className.take(className.length - CLASS_SUFFIX.length)
-                    }
-
-                    try {
-                        Class.forName(className)
-                    } catch (e: ClassNotFoundException) {
-                        try {
-                            Class.forName("java.lang.${className}")
-                        } catch (e: ClassNotFoundException) {
-                            it
-                        }
-                    }
-        }
-    }
-
     fun invoke(): ScopedMatcher {
-        val typedArgs = argsWithTypes().toTypedArray()
+        val typedArgs = args
         val matcherClass: KClass<*> = cls ?: Matchers::class
         val matcher = try {
-            invokeStaticMethod(matcherClass.java, name, *typedArgs)
-        } catch (e: NoSuchMethodException) {
-            throw InvalidSelectorException("${matcherClass.qualifiedName} does not implement any $name " +
-                    "methods that accept $typedArgs argument(s)", e)
+            try {
+                invokeStaticMethod(matcherClass.java, name, *typedArgs)
+            } catch (e: NoSuchMethodException) {
+                val converted = coerceFactoryArguments(matcherClass.java, typedArgs)
+                    ?: throw InvalidSelectorException("${matcherClass.qualifiedName} does not implement any $name " +
+                        "methods that accept ${typedArgs.contentToString()} argument(s)", e)
+                invokeStaticMethod(matcherClass.java, name, *converted)
+            }
+        } catch (e: InvocationTargetException) {
+            throw (e.cause as? AppiumException ?: InvalidSelectorException("Could not create matcher '$name'", e.cause ?: e))
         }
         if (matcher !is Matcher<*>) {
             throw InvalidArgumentException("'${this}' does not return a Matcher when invoked. " +
                     "Found '${matcher?.let { it::class.qualifiedName } ?: "null"}'")
         }
         return ScopedMatcher(matcher, scope?.invoke()?.matcher)
+    }
+
+    /** Reflection permits widening primitives but not JSON Double -> float or String -> enum. */
+    private fun coerceFactoryArguments(factory: Class<*>, values: Array<out Any?>): Array<Any?>? {
+        val candidates = factory.methods.filter {
+            it.name == name && java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                !it.isVarArgs && it.parameterCount == values.size
+        }.mapNotNull { method ->
+            val converted = arrayOfNulls<Any?>(values.size)
+            for (index in values.indices) {
+                val value = values[index]
+                val type = method.parameterTypes[index]
+                converted[index] = when {
+                    ClassUtils.isAssignable(value?.javaClass, type, true) -> value
+                    value is String && type == Class::class.java -> {
+                        val className = value.removeSuffix(CLASS_SUFFIX)
+                        try { Class.forName(className) }
+                        catch (_: ClassNotFoundException) {
+                            try { Class.forName("java.lang.$className") }
+                            catch (_: ClassNotFoundException) { return@mapNotNull null }
+                        }
+                    }
+                    value is Double && (type == Float::class.javaPrimitiveType || type == Float::class.javaObjectType) &&
+                        value.isFinite() && value.toFloat().isFinite() -> value.toFloat()
+                    value is String && type.isEnum -> type.enumConstants?.firstOrNull { (it as Enum<*>).name == value }
+                        ?: return@mapNotNull null
+                    else -> return@mapNotNull null
+                }
+            }
+            converted
+        }
+        return candidates.singleOrNull()
     }
 
     class HamcrestMatcherDeserializer : JsonDeserializer<HamcrestMatcher> {
@@ -113,6 +130,7 @@ data class HamcrestMatcher(
                         arg.isJsonObject -> args.add(
                             deserialize(arg, null, null).invoke().matcher
                         )
+                        else -> throw JsonParseException("Matcher arguments must be primitives, null, or nested matcher objects")
                     }
                 }
 
@@ -124,12 +142,11 @@ data class HamcrestMatcher(
                         return@let Class.forName(className).kotlin
                     } catch (cnfe: ClassNotFoundException) { }
                     // If above didn't work, try prepending 'androidx.test.espresso.matcher' package name
-                    try {
-                        val qualifiedClassName = "androidx.test.espresso.matcher.${className}"
-                        return@let Class.forName(qualifiedClassName).kotlin
-                    } catch (cnfe: ClassCastException) {
-                        throw JsonParseException("No such class found '${className}'")
+                    for (prefix in listOf("androidx.test.espresso.matcher", "io.appium.espressoserver.lib.llm")) {
+                        try { return@let Class.forName("$prefix.$className").kotlin }
+                        catch (_: ClassNotFoundException) { }
                     }
+                    throw JsonParseException("No such class found '$className'")
                 }
 
                 return HamcrestMatcher(name, args.toTypedArray(), cls, scope)

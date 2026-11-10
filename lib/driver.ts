@@ -24,6 +24,7 @@ import * as screenshotCmds from './commands/screenshot.js';
 import * as serverCmds from './commands/server/index.js';
 import type {EspressoRunner} from './commands/server/index.js';
 import * as servicesCmds from './commands/services.js';
+import * as ultronCmds from './commands/ultron.js';
 import type {EspressoConstraints} from './constraints.js';
 import {ESPRESSO_CONSTRAINTS} from './constraints.js';
 import {executeMethodMap} from './execute-method-map.js';
@@ -195,6 +196,13 @@ export class EspressoDriver
   mobileBackdoor = miscCmds.mobileBackdoor;
   mobileUiautomator = miscCmds.mobileUiautomator;
   mobileUiautomatorPageSource = miscCmds.mobileUiautomatorPageSource;
+  mobileUltronSnapshot = ultronCmds.mobileUltronSnapshot;
+  mobileUltronComposeAct = ultronCmds.mobileUltronComposeAct;
+  mobileUltronComposeAssert = ultronCmds.mobileUltronComposeAssert;
+  mobileUltronAct = ultronCmds.mobileUltronAct;
+  mobileUltronAssert = ultronCmds.mobileUltronAssert;
+  mobileUltronRecycler = ultronCmds.mobileUltronRecycler;
+  mobileUltronLastResult = ultronCmds.mobileUltronLastResult;
   updateSettings = miscCmds.updateSettings;
   getSettings = miscCmds.getSettings;
 

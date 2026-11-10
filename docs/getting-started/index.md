@@ -75,18 +75,17 @@ Provided you have set up the above prerequisites, you can install the driver usi
 [extension CLI](https://appium.io/docs/en/latest/cli/extensions/):
 
 ```bash
-appium driver install espresso
+appium driver install --source=git https://github.com/dabrynskiy/ultron-omni-driver.git
 ```
 
-You can also specify an exact driver version:
+This installs the independent `ultron-omni-driver` fork. The Appium driver name remains `espresso`
+and `appium:automationName` remains `Espresso`. The command `appium driver install espresso`
+installs the upstream driver, which does not include this fork's Ultron/MCP extensions.
 
-```bash
-appium driver install espresso@8.6.0
-```
-
-Alternatively, if you are running a Node.js project, you can include `appium-espresso-driver` as
-one of your project dependencies. [Refer to the Appium documentation](https://appium.io/docs/en/latest/guides/managing-exts/#do-it-yourself-with-npm)
-for more information about this approach.
+To use this checkout as a Node.js project dependency, install it by local path or Git URL.
+[Refer to the Appium documentation](https://appium.io/docs/en/latest/guides/managing-exts/#do-it-yourself-with-npm)
+for more information about this approach. Instrumentation is built from the included Android
+sources for each target app; locally built APKs are not included in the npm package.
 
 ### Verify the Installation
 

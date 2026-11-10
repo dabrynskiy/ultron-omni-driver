@@ -271,7 +271,7 @@ export class EspressoRunner {
       'apk',
       'androidTest',
       'debug',
-      'app-debug-androidTest.apk',
+      'ultron-omni-driver.apk',
     );
     this.log.debug(`Copying built apk from '${apkPath}' to '${this.modServerPath}'`);
     await fs.copyFile(apkPath, this.modServerPath);
@@ -291,6 +291,9 @@ export class EspressoRunner {
       '-e',
       'disableAnalytics',
       'true', // To avoid unexpected error by google analytics
+      '-e',
+      'class',
+      'io.appium.espressoserver.EspressoServerRunnerTest', // Avoid scanning dependencies for tests
     ];
 
     if (typeof this.disableSuppressAccessibilityService === 'boolean') {
@@ -358,7 +361,7 @@ export class EspressoRunner {
         },
         {
           waitMs: this.serverLaunchTimeout,
-          intervalMs: 500,
+          intervalMs: 50,
         },
       );
     } catch (e: any) {
@@ -493,7 +496,7 @@ function requireOption<K extends keyof EspressoRunnerOptions>(
   return opts[key] as NonNullable<EspressoRunnerOptions[K]>;
 }
 
-const MODULE_NAME = 'appium-espresso-driver';
+const MODULE_NAME = 'ultron-omni-driver';
 const FILENAME = fileURLToPath(import.meta.url);
 
 let testServerRoot: string | undefined;

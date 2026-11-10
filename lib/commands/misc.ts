@@ -138,7 +138,7 @@ export async function mobileBackdoor(
 }
 
 /**
- *  Execute UiAutomator2 commands to drive out of app areas.
+ *  Execute UI Automator operations through Ultron to drive out-of-app areas.
  *  strategy can be one of: "clazz", "res", "text", "textContains", "textEndsWith", "textStartsWith",
  *                          "desc", "descContains", "descEndsWith", "descStartsWith", "pkg"
  *
@@ -179,11 +179,20 @@ export async function mobileUiautomatorPageSource(this: EspressoDriver): Promise
 
 /**
  * Apply the given settings to the espresso driver and the espresso server.
- * Errors by the espresso server will be printed as log, but it does not return an error message.
+ * Server errors are logged for legacy settings; ultronSnapshotEnabled changes propagate errors.
  * @param settings - Settings object containing key-value pairs of settings to apply
  * @returns Promise that resolves when settings are updated
  */
 export async function updateSettings(this: EspressoDriver, settings: SettingsOptions): Promise<void> {
+  if (Object.hasOwn(settings, 'ultronSnapshotEnabled')) {
+    if (typeof settings.ultronSnapshotEnabled !== 'boolean') {
+      throw new errors.InvalidArgumentError('ultronSnapshotEnabled must be a boolean');
+    }
+    // Commit the local setting only after the device has accepted the change.
+    await this.espresso.jwproxy.command('/appium/settings', 'POST', {settings});
+    await this.settings.update(settings);
+    return;
+  }
   await this.settings.update(settings);
   try {
     await this.espresso.jwproxy.command(`/appium/settings`, 'POST', {settings});

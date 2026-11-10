@@ -16,6 +16,8 @@
 
 package io.appium.espressoserver.lib.handlers
 
+import io.appium.espressoserver.lib.helpers.ultron
+
 import androidx.test.espresso.EspressoException
 import androidx.test.espresso.contrib.ViewPagerActions
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
@@ -28,7 +30,7 @@ class ScrollToPage : RequestHandler<ScrollToPageParams, Void?> {
 
     @Throws(AppiumException::class)
     override fun handleInternal(params: ScrollToPageParams): Void? {
-        val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
+        val viewInteraction = EspressoElement.getViewInteractionById(params.elementId).ultron()
         try {
             val smoothScroll = params.smoothScroll
             params.scrollTo?.let {

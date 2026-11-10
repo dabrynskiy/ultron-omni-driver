@@ -1,28 +1,26 @@
-## Appium Espresso Driver
+# Ultron Omni Driver
 
-<p align="center">
-   <a href="https://appium.github.io/appium-espresso-driver/">
-      <img alt="Appium Espresso Driver" src="./docs/assets/images/appium-plus-espresso.png" width="400">
-   </a>
-</p>
+An independent fork of [Appium Espresso Driver](https://github.com/appium/appium-espresso-driver),
+with Ultron operations, mixed View/Compose snapshots and an optional MCP interface.
+This is not an official Appium release. Upstream copyright and license notices are retained;
+see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-<div align="center">
+[Source and issues](https://github.com/dabrynskiy/ultron-omni-driver) ·
+[Snapshot guide](docs/guides/llm-views.md) · [MCP setup](packages/ultron-mcp/README.md)
 
-[![NPM version](http://img.shields.io/npm/v/appium-espresso-driver.svg)](https://npmjs.org/package/appium-espresso-driver)
-[![Downloads](http://img.shields.io/npm/dm/appium-espresso-driver.svg)](https://npmjs.org/package/appium-espresso-driver)
-[![Release](https://github.com/appium/appium-espresso-driver/actions/workflows/publish.js.yml/badge.svg)](https://github.com/appium/appium-espresso-driver/actions/workflows/publish.js.yml)
+To install this fork with Appium 3:
 
-</div>
+```sh
+appium driver install --source=git https://github.com/dabrynskiy/ultron-omni-driver.git
+```
 
----
+The npm package is named `ultron-omni-driver`. For compatibility, the Appium driver name remains
+`espresso` and `appium:automationName` remains `Espresso`.
+Published packages contain Android sources, not locally built APKs. Appium builds instrumentation
+for the target application; standalone MCP users build and sign an APK as described in its guide.
 
-<p align="center"><b>
-   <a href="https://appium.github.io/appium-espresso-driver/">Documentation</a> |
-   <a href="https://appium.github.io/appium-espresso-driver/latest/getting-started/">Get Started</a> |
-   <a href="https://github.com/appium/appium-espresso-driver/blob/master/CHANGELOG.md">Changelog</a>
-</b></p>
-
----
+The following documentation is adapted from the upstream Espresso driver. Links to the Appium
+website describe upstream behavior; fork-specific functionality is documented in this repository.
 
 This is a grey-box Appium driver for automating native and hybrid applications on Android, using
 Android's Espresso framework.
@@ -48,9 +46,15 @@ The Espresso package consists of two main parts:
 
 See the [end-to-end architecture diagram](./docs/architecture.md).
 
+This fork also provides [mixed View/Compose JSON snapshots](./docs/guides/llm-views.md) and a
+separate [Ultron MCP server](./packages/ultron-mcp/README.md) for agent-driven test steps, with direct
+Android HTTP access without Appium and an optional Appium MCP plugin. Standalone MCP can
+[manage one Android device](./packages/ultron-mcp/README.md#standalone-managed-device-lifecycle-prebuilt-apk)
+from a prebuilt signed instrumentation APK: lazy installation/startup, a dynamic forwarded port,
+and explicit session cleanup.
+
 > [!IMPORTANT]
-> Since major version *5.0.0*, this driver is only compatible with Appium 3. Use the `appium driver install espresso`
-> command to add it to your distribution.
+> Since major version *5.0.0*, this driver is only compatible with Appium 3. Use the Git installation command above to install this fork.
 
 
 ## Comparison with UiAutomator2
@@ -1904,7 +1908,7 @@ to [integrate](#consuming-espresso-server-as-library) Espresso Server with the a
 ### Running
 
 * To build the Espresso server _and_ the NodeJS code, run `npm run build`
-* To just build the Espresso server, run `npm run build:server` or `cd espresso-server && ./gradlew clean assembleDebug assembleAndroidTest`. The server can also be built from Android Studio.
+* To just build the Espresso server, run `npm run build:server` or `cd espresso-server && ./gradlew clean assembleDebug assembleAndroidTest`. The server can also be built from Android Studio. The driver APK is written to `espresso-server/app/build/outputs/apk/androidTest/debug/ultron-omni-driver.apk`.
     * To build the espresso server for a custom target package `./gradlew -PappiumTargetPackage=io.appium.android.apis assembleAndroidTest`
 * To just build NodeJS code, run `npm run build:node`
 

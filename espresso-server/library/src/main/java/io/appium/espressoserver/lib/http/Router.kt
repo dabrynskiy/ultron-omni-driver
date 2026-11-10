@@ -60,6 +60,13 @@ internal class Router(server: ServerBase) {
         routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/rotation", SetRotation(), RotationParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/rotation", GetRotation(), AppiumParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/source", Source(), AppiumParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_snapshot", UltronSnapshot(), UltronSnapshotParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/appium/execute_mobile/ultron_last_result", UltronLastResult(), AppiumParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_act", UltronLlmOperation(false), UltronOperationParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_assert", UltronLlmOperation(true), UltronOperationParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_compose_act", UltronComposeOperation(false), UltronComposeParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_compose_assert", UltronComposeOperation(true), UltronComposeParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_recycler", UltronRecycler(), UltronRecyclerParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/screenshot", ScreenshotHandler(), AppiumParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/element", FindElement(), Locator::class.java))
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/element/active", FindActive(), AppiumParams::class.java))
@@ -187,6 +194,7 @@ internal class Router(server: ServerBase) {
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/log/types", NotYetImplemented(), AppiumParams::class.java))
     }
 
+    @Synchronized
     fun route(uri: String, method: Method, files: Map<String, String>): BaseResponse {
         AndroidLogger.debug("Started processing $method request for '$uri'")
 
@@ -212,6 +220,7 @@ internal class Router(server: ServerBase) {
             val appiumParams: AppiumParams = postJson?.let {
                 AndroidLogger.debug("Got raw post data: ${abbreviate(it, 300)}")
                 try {
+                    if (paramClass == UltronComposeParams::class.java) UltronComposeParams.validateJson(it)
                     paramClass.cast(Gson().fromJson<AppiumParams>(it, paramClass))
                             ?: return AppiumResponse(InvalidArgumentException("Could not parse JSON: $it"))
                 } catch (e: JsonParseException) {

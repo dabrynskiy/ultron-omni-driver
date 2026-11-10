@@ -1,0 +1,13 @@
+Ultron Omni Driver
+https://github.com/dabrynskiy/ultron-omni-driver
+
+This project is a modified fork of Appium Espresso Driver 9.3.10:
+https://github.com/appium/appium-espresso-driver
+Copyright JS Foundation and other contributors, https://js.foundation
+
+Modifications include Ultron operations, mixed View/Compose snapshots, MCP
+integration, and publication/privacy safeguards. Upstream copyright and license
+notices are retained. This fork is not an official Appium release.
+
+The source is distributed under the Apache License, Version 2.0; see LICENSE.
+Third-party dependencies retain their own licenses and attribution notices.

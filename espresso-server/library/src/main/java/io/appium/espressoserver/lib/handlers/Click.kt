@@ -22,14 +22,14 @@ import io.appium.espressoserver.lib.handlers.exceptions.InvalidElementStateExcep
 import io.appium.espressoserver.lib.model.AppiumParams
 import io.appium.espressoserver.lib.model.EspressoElement
 
-import androidx.test.espresso.action.ViewActions.click
+import io.appium.espressoserver.lib.helpers.ultron
 
 class Click : RequestHandler<AppiumParams, Unit> {
 
     override fun handleEspresso(params: AppiumParams) {
         val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
         try {
-            viewInteraction.perform(click())
+            viewInteraction.ultron().click()
         } catch (e: PerformException) {
             throw InvalidElementStateException("click", params.elementId!!, e)
         }

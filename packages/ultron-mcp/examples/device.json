@@ -1,0 +1,7 @@
+{
+  "deviceSerial": "emulator-5554",
+  "driverApk": "/absolute/path/ultron-omni-driver.apk",
+  "appPackage": "com.example.app",
+  "appActivity": ".MainActivity",
+  "autoLaunch": true
+}

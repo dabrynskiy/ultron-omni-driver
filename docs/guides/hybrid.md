@@ -31,6 +31,17 @@ simply changes the underlying component to which it forwards most API commands:
 
 Refer to [Technologies Used](../overview.md#technologies-used) for more details.
 
+## Native Web Atoms
+
+The [`mobile: webAtoms`](../reference/execute-methods.md#mobile-webatoms) extension provides a
+separate path for interacting with a WebView from the native context. It receives the native
+WebView element ID and a chain of Espresso Web atoms. In this fork, each step executes through
+Ultron's Espresso Web executor, preserving the extension's parameters and result format.
+
+This does not replace the Chromedriver-backed web context or implement its full WebDriver API.
+JavaScript must be enabled for web atoms; `forceJavascriptEnabled` can enable it for the selected
+WebView.
+
 ## Web Context Specifics
 
 Switching from the native context to a ChromeDriver-backed web context brings a few benefits and
@@ -108,7 +119,7 @@ It is possible to instruct the driver to skip this automatic download, by settin
 `APPIUM_SKIP_CHROMEDRIVER_INSTALL` environment variable:
 
 ```bash
-APPIUM_SKIP_CHROMEDRIVER_INSTALL=1 appium driver install espresso
+APPIUM_SKIP_CHROMEDRIVER_INSTALL=1 appium driver install --source=git https://github.com/dabrynskiy/ultron-omni-driver.git
 ```
 
 If ChromeDriver has already been automatically installed this way, it is also possible to skip its

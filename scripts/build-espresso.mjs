@@ -63,7 +63,7 @@ async function buildEspressoServer(options) {
     'apk',
     'androidTest',
     'debug',
-    'app-debug-androidTest.apk',
+    'ultron-omni-driver.apk',
   );
   if (await fs.exists(dstPath)) {
     LOG.info(`Full path to the server APK: ${dstPath}`);

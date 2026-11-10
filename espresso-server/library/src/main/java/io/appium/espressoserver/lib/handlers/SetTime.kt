@@ -16,6 +16,8 @@
 
 package io.appium.espressoserver.lib.handlers
 
+import io.appium.espressoserver.lib.helpers.ultron
+
 import androidx.test.espresso.EspressoException
 import androidx.test.espresso.contrib.PickerActions
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
@@ -28,7 +30,7 @@ class SetTime : RequestHandler<SetTimeParams, Void?> {
     override fun handleInternal(params: SetTimeParams): Void? {
         val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
         try {
-            viewInteraction.perform(PickerActions.setTime(params.hours, params.minutes))
+            viewInteraction.ultron().perform(PickerActions.setTime(params.hours, params.minutes))
         } catch (e: Exception) {
             if (e is EspressoException) {
                 throw AppiumException("Could not set time on element. Reason: $e")

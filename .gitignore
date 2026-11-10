@@ -14,5 +14,21 @@ node_modules
 build
 .DS_Store
 .gradle/
+.kotlin/
 test/fixtures/
 site
+
+# Local IDE state, credentials and application-specific binaries
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.apk
+*.aab

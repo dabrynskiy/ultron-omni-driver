@@ -41,7 +41,7 @@ object GsonParserHelpers {
 
     fun parsePrimitive(jsonPrimitive: JsonPrimitive): Any = when {
         jsonPrimitive.isNumber -> {
-            val hasDecimal = jsonPrimitive.asString.contains(".")
+            val hasDecimal = jsonPrimitive.asString.contains(".") || jsonPrimitive.asString.contains("e", ignoreCase = true)
             if (hasDecimal) {
                 jsonPrimitive.asDouble
             } else {

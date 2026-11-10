@@ -18,8 +18,17 @@ package io.appium.espressoserver.lib.drivers
 
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import com.atiurin.ultron.core.compose.ComposeTestContainer
+import com.atiurin.ultron.core.compose.ComposeTestEnvironment
 
-private val emptyComposeRule: ComposeTestRule = createEmptyComposeRule()
+private val emptyComposeRule: ComposeTestRule = createEmptyComposeRule().also { rule ->
+    // Share the server's existing rule; a second Compose rule would create a separate test lifecycle.
+    ComposeTestContainer.init(object : ComposeTestEnvironment {
+        override val provider get() = rule
+        override val density get() = rule.density
+        override val mainClock get() = rule.mainClock
+    })
+}
 
 /**
  * Compose UI test rule for this build. Import [composeTestRule] when using from other packages

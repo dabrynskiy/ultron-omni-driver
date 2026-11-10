@@ -1,0 +1,7 @@
+Ultron MCP
+Part of Ultron Omni Driver:
+https://github.com/dabrynskiy/ultron-omni-driver
+
+This package is distributed under the Apache License, Version 2.0; see LICENSE.
+Its dependencies retain their own licenses, including the MIT licenses of
+@modelcontextprotocol/sdk and Zod. Their license files accompany those packages.

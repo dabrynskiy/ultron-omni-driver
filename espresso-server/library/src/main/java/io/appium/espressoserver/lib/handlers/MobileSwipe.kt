@@ -20,6 +20,7 @@ import io.appium.espressoserver.lib.compose.ComposeHandlerBridge
 import androidx.test.espresso.action.GeneralSwipeAction
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 import io.appium.espressoserver.lib.helpers.AndroidLogger
+import io.appium.espressoserver.lib.helpers.ultron
 import io.appium.espressoserver.lib.model.EspressoElement
 import io.appium.espressoserver.lib.model.MobileSwipeParams
 import io.appium.espressoserver.lib.model.MobileSwipeParams.Direction.*
@@ -28,15 +29,15 @@ class MobileSwipe : RequestHandler<MobileSwipeParams, Void?> {
 
     override fun handleEspresso(params: MobileSwipeParams): Void? {
         // Get a reference to the view and call onData. This will automatically scroll to the view.
-        val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
+        val viewInteraction = EspressoElement.getViewInteractionById(params.elementId).ultron()
 
         if (params.direction != null) {
             AndroidLogger.info("Performing swipe action with direction '${params.direction}'")
             when (params.direction) {
-                UP -> viewInteraction.perform(androidx.test.espresso.action.ViewActions.swipeUp())
-                DOWN -> viewInteraction.perform(androidx.test.espresso.action.ViewActions.swipeDown())
-                LEFT -> viewInteraction.perform(androidx.test.espresso.action.ViewActions.swipeLeft())
-                RIGHT -> viewInteraction.perform(androidx.test.espresso.action.ViewActions.swipeRight())
+                UP -> viewInteraction.swipeUp()
+                DOWN -> viewInteraction.swipeDown()
+                LEFT -> viewInteraction.swipeLeft()
+                RIGHT -> viewInteraction.swipeRight()
                 else -> throw InvalidArgumentException(
                     "Unknown swipe direction '${params.direction}'. " +
                             "Only the following values are supported: " +

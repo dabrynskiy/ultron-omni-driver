@@ -20,9 +20,13 @@ import androidx.test.espresso.web.model.Atom
 import androidx.test.espresso.web.sugar.Web.WebInteraction
 import androidx.test.espresso.web.sugar.Web.onWebView
 import androidx.test.espresso.web.webdriver.DriverAtoms
+import com.atiurin.ultron.core.common.CommonOperationType
+import com.atiurin.ultron.core.common.UltronOperationType
+import com.atiurin.ultron.core.espressoweb.operation.EspressoWebOperationType
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 import io.appium.espressoserver.lib.helpers.AndroidLogger
+import io.appium.espressoserver.lib.helpers.executeWebForAppium
 import io.appium.espressoserver.lib.helpers.ReflectionUtils.invokeInstanceMethod
 import io.appium.espressoserver.lib.helpers.ReflectionUtils.invokeStaticMethod
 import io.appium.espressoserver.lib.model.EspressoElement
@@ -47,7 +51,10 @@ class WebAtoms : RequestHandler<WebAtomsParams, Any?> {
 
         // Set forceJavascript enabled if provided
         if (params.forceJavascriptEnabled) {
-            webViewInteraction.forceJavascriptEnabled()
+            webViewInteraction = executeWebForAppium(
+                name = "WebView forceJavascriptEnabled",
+                type = EspressoWebOperationType.WEB_EVAL_JS_SCRIPT,
+            ) { webViewInteraction.forceJavascriptEnabled() }
         }
 
         // Iterate through methodsChain and call the atoms
@@ -59,16 +66,32 @@ class WebAtoms : RequestHandler<WebAtomsParams, Any?> {
 
             AndroidLogger.info("Calling interaction '${method.name}' with the atom '${method.atom}'")
 
-            val res = invokeInstanceMethod(webViewInteraction, method.name, atom) as? WebInteraction<*>
-                ?: throw InvalidArgumentException(
-                    "'${method.name}' does not return a valid '${WebInteraction::class.qualifiedName}' object",
-                )
-
-            webViewInteraction = res
+            val currentInteraction = webViewInteraction
+            webViewInteraction = executeWebForAppium(
+                name = "WebView ${method.name}(${method.atom.name})",
+                type = operationType(method.atom.name),
+            ) {
+                invokeInstanceMethod(currentInteraction, method.name, atom) as? WebInteraction<*>
+                    ?: throw InvalidArgumentException(
+                        "'${method.name}' does not return a valid '${WebInteraction::class.qualifiedName}' object",
+                    )
+            }
         }
         // if you don't pass any action to perform `webViewInteraction.get()` will throw error
         // java.lang.IllegalStateException: Perform or Check never called on this WebInteraction!
         // when you just want to just check element existence call with `selectActiveElement` as action
         return webViewInteraction.get()
+    }
+
+    private fun operationType(atomName: String): UltronOperationType = when (atomName) {
+        "webClick" -> EspressoWebOperationType.WEB_CLICK
+        "webKeys" -> EspressoWebOperationType.WEB_KEYS
+        "clearElement" -> EspressoWebOperationType.WEB_CLEAR_ELEMENT
+        "getText" -> EspressoWebOperationType.WEB_GET_TEXT
+        "webScrollIntoView" -> EspressoWebOperationType.WEB_SCROLL_INTO_VIEW
+        "selectActiveElement" -> EspressoWebOperationType.WEB_SELECT_ACTIVE_ELEMENT
+        "selectFrameByIndex" -> EspressoWebOperationType.WEB_SELECT_FRAME_BY_INDEX
+        "selectFrameByIdOrName" -> EspressoWebOperationType.WEB_SELECT_FRAME_BY_ID_OR_NAME
+        else -> CommonOperationType.DEFAULT
     }
 }

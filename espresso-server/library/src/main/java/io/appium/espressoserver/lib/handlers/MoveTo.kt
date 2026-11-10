@@ -22,7 +22,7 @@ import io.appium.espressoserver.lib.model.EspressoElement
 import io.appium.espressoserver.lib.model.MoveToParams
 import io.appium.espressoserver.lib.viewaction.ScrollTo
 
-import androidx.test.espresso.action.ViewActions.scrollTo
+import io.appium.espressoserver.lib.helpers.ultron
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 
 class MoveTo : RequestHandler<MoveToParams, Void?> {
@@ -31,13 +31,13 @@ class MoveTo : RequestHandler<MoveToParams, Void?> {
     override fun handleInternal(params: MoveToParams): Void? {
         // Get a reference to the view and call onData. This will automatically scroll to the view.
         params.elementToMoveTo ?: throw InvalidArgumentException("Must provide element to move to")
-        val viewInteraction = EspressoElement.getViewInteractionById(params.elementToMoveTo)
+        val viewInteraction = EspressoElement.getViewInteractionById(params.elementToMoveTo).ultron()
 
         try {
             // Try performing espresso's scrollTo, which will only work if
             //   1. View is descendant of scrollView
             //   2. View is visible
-            viewInteraction.perform(scrollTo())
+            viewInteraction.scrollTo()
         } catch (pe: PerformException) {
             // If it doesn't meet the above conditions, use our built-in scrollTo
             viewInteraction.perform(ScrollTo())

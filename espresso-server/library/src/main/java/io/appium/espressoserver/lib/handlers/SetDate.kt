@@ -16,6 +16,8 @@
 
 package io.appium.espressoserver.lib.handlers
 
+import io.appium.espressoserver.lib.helpers.ultron
+
 import androidx.test.espresso.EspressoException
 import androidx.test.espresso.contrib.PickerActions
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
@@ -28,7 +30,7 @@ class SetDate : RequestHandler<SetDateParams, Void?> {
     override fun handleInternal(params: SetDateParams): Void? {
         val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
         try {
-            viewInteraction.perform(PickerActions.setDate(params.year, params.monthOfYear, params.dayOfMonth))
+            viewInteraction.ultron().perform(PickerActions.setDate(params.year, params.monthOfYear, params.dayOfMonth))
         } catch (e: Exception) {
             if (e is EspressoException) {
                 throw AppiumException("Could not set date on element. Reason: $e")
