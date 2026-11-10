@@ -18,14 +18,14 @@ package io.appium.espressoserver.lib.handlers
 
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
 import io.appium.espressoserver.lib.model.AppiumParams
-
-import androidx.test.espresso.Espresso.pressBack
+import com.atiurin.ultron.core.espresso.UltronEspresso
+import io.appium.espressoserver.lib.helpers.runUltronAction
 
 class Back : RequestHandler<AppiumParams, Void?> {
 
     @Throws(AppiumException::class)
     override fun handleInternal(params: AppiumParams): Void? {
-        pressBack()
+        runUltronAction { UltronEspresso.pressBack() }
         return null
     }
 }

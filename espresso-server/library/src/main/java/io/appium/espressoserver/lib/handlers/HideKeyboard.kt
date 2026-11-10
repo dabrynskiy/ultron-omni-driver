@@ -16,14 +16,15 @@
 
 package io.appium.espressoserver.lib.handlers
 
-import androidx.test.espresso.Espresso
+import com.atiurin.ultron.core.espresso.UltronEspresso
+import io.appium.espressoserver.lib.helpers.runUltronAction
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
 import io.appium.espressoserver.lib.model.AppiumParams
 
 class HideKeyboard : RequestHandler<AppiumParams, Void?> {
     @Throws(AppiumException::class)
     override fun handleInternal(params: AppiumParams): Void? {
-        Espresso.closeSoftKeyboard()
+        runUltronAction { UltronEspresso.closeSoftKeyboard() }
         return null
     }
 }

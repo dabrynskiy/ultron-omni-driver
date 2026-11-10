@@ -29,7 +29,7 @@ class UpdateSettings : RequestHandler<SettingsParams, Void?> {
         SettingType.values().find { it.setting.name == settingName }?.setting
             ?: throw InvalidArgumentException(
                 "Could not find matching setting. Known setting names are: ${
-                    SettingType.values().map { it.toString().lowercase() }
+                    SettingType.values().map { it.setting.name }
                 }"
             )
 }

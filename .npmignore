@@ -1,0 +1,18 @@
+# Never distribute local device builds, credentials, or IDE/Gradle state.
+**/.idea/**
+**/.gradle/**
+**/.kotlin/**
+espresso-server/**/build/**
+**/*.iml
+**/*.apk
+**/*.aab
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+**/.env
+**/.env.*
+**/local.properties
+**/*.log

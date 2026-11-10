@@ -16,6 +16,8 @@
 
 package io.appium.espressoserver.lib.handlers
 
+import io.appium.espressoserver.lib.helpers.ultron
+
 import androidx.test.espresso.EspressoException
 import androidx.test.espresso.contrib.NavigationViewActions
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
@@ -29,7 +31,7 @@ class NavigateTo : RequestHandler<NavigateToParams, Void?> {
         val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
         val menuItemId = params.menuItemId
         try {
-            viewInteraction.perform(NavigationViewActions.navigateTo(menuItemId))
+            viewInteraction.ultron().perform(NavigationViewActions.navigateTo(menuItemId))
         } catch (e: Exception) {
             if (e is EspressoException) {
                 throw AppiumException(String.format("Could not navigate to menu item %s. Reason: %s", menuItemId, e))

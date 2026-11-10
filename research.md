@@ -198,9 +198,9 @@ How to run an espresso testcase from the command line:
 
 ### Appium test runner
 
-* `apktool d app-debug-androidTest.apk`
+* `apktool d ultron-omni-driver.apk`
 * edit `AndroidManifest.xml` to set the instrumentation `android:targetPackage` to the package for the AUT
-* `apktool b app-debug-androidTest -o a.apk`
+* `apktool b ultron-omni-driver -o a.apk`
 * `zipalign` the `a.apk` file (`zipalign -v -p 4 a.apk a-aligned.apk`)
 * sign the aligned file (`apksigner sign --ks my-release-key.jks --out a-release.apk a-aligned.apk`)
 * remove the old runner (`adb uninstall io.appium.espresso.BasicSample.test`)

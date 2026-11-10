@@ -16,15 +16,8 @@
 
 package io.appium.espressoserver.lib.compose
 
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performGesture
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.swipeDown
-import androidx.compose.ui.test.swipeLeft
-import androidx.compose.ui.test.swipeRight
-import androidx.compose.ui.test.swipeUp
+import com.atiurin.ultron.core.compose.nodeinteraction.UltronComposeSemanticsNodeInteraction
+import com.atiurin.ultron.core.compose.nodeinteraction.click
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidElementStateException
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidSelectorException
@@ -33,6 +26,7 @@ import io.appium.espressoserver.lib.handlers.exceptions.StaleElementException
 import io.appium.espressoserver.lib.helpers.AndroidLogger
 import io.appium.espressoserver.lib.helpers.getNodeInteractionById
 import io.appium.espressoserver.lib.helpers.getSemanticsNode
+import io.appium.espressoserver.lib.helpers.handleUltronResult
 import io.appium.espressoserver.lib.helpers.toNodeInteractionsCollection
 import io.appium.espressoserver.lib.model.AppiumParams
 import io.appium.espressoserver.lib.model.BaseElement
@@ -46,6 +40,12 @@ import io.appium.espressoserver.lib.model.Size
 import io.appium.espressoserver.lib.model.TextValueParams
 
 internal object ComposeHandlerBridge {
+    private fun ultronInteraction(elementId: String?) =
+        UltronComposeSemanticsNodeInteraction(
+            getNodeInteractionById(elementId),
+            resultHandler = ::handleUltronResult,
+        )
+
     fun findElement(params: Locator): BaseElement {
         val nodeInteractions = toNodeInteractionsCollection(params)
         if (nodeInteractions.fetchSemanticsNodes(false).isEmpty()) {
@@ -69,7 +69,7 @@ internal object ComposeHandlerBridge {
 
     fun click(params: AppiumParams) {
         try {
-            getNodeInteractionById(params.elementId).performClick()
+            ultronInteraction(params.elementId).click()
         } catch (e: AssertionError) {
             throw StaleElementException(params.elementId!!)
         } catch (e: IllegalArgumentException) {
@@ -79,7 +79,7 @@ internal object ComposeHandlerBridge {
 
     fun clear(params: AppiumParams) {
         try {
-            getNodeInteractionById(params.elementId).performTextClearance()
+            ultronInteraction(params.elementId).clearText()
         } catch (e: AssertionError) {
             throw StaleElementException(params.elementId!!)
         } catch (e: IllegalArgumentException) {
@@ -90,10 +90,8 @@ internal object ComposeHandlerBridge {
     fun elementValue(params: TextValueParams, isReplacing: Boolean) {
         val value: String = extractTextToEnter(params)
         try {
-            if (isReplacing) {
-                getNodeInteractionById(params.elementId).performTextClearance()
-            }
-            getNodeInteractionById(params.elementId).performTextInput(value)
+            val interaction = ultronInteraction(params.elementId)
+            if (isReplacing) interaction.replaceText(value) else interaction.inputText(value)
         } catch (e: IllegalArgumentException) {
             throw InvalidElementStateException("Clear", params.elementId!!, e)
         }
@@ -103,7 +101,7 @@ internal object ComposeHandlerBridge {
         try {
             val keys = params.value ?: return
             keys.forEach {
-                getNodeInteractionById(params.elementId).performTextInput(it)
+                ultronInteraction(params.elementId).inputText(it)
             }
         } catch (e: AssertionError) {
             throw StaleElementException(params.elementId!!)
@@ -113,13 +111,13 @@ internal object ComposeHandlerBridge {
     }
 
     fun mobileSwipe(params: MobileSwipeParams): Void? {
-        val nodeInteractions = getNodeInteractionById(params.elementId)
+        val nodeInteractions = ultronInteraction(params.elementId)
         AndroidLogger.info("Performing swipe action with direction '${params.direction}'")
         when (params.direction) {
-            MobileSwipeParams.Direction.UP -> nodeInteractions.performGesture { swipeUp() }
-            MobileSwipeParams.Direction.DOWN -> nodeInteractions.performGesture { swipeDown() }
-            MobileSwipeParams.Direction.LEFT -> nodeInteractions.performGesture { swipeLeft() }
-            MobileSwipeParams.Direction.RIGHT -> nodeInteractions.performGesture { swipeRight() }
+            MobileSwipeParams.Direction.UP -> nodeInteractions.swipeUp()
+            MobileSwipeParams.Direction.DOWN -> nodeInteractions.swipeDown()
+            MobileSwipeParams.Direction.LEFT -> nodeInteractions.swipeLeft()
+            MobileSwipeParams.Direction.RIGHT -> nodeInteractions.swipeRight()
             else -> throw InvalidArgumentException(
                 "Unknown swipe direction '${params.direction}'. " +
                     "Only the following values are supported: " +
@@ -131,7 +129,7 @@ internal object ComposeHandlerBridge {
 
     fun getDisplayed(params: AppiumParams): Boolean =
         try {
-            getNodeInteractionById(params.elementId).assertIsDisplayed()
+            ultronInteraction(params.elementId).withTimeout(0).assertIsDisplayed()
             true
         } catch (e: AssertionError) {
             false

@@ -1654,10 +1654,23 @@ Available since driver version 6.0.7.
 W3C WebDriver capabilities. The exact structure may depend on the Chrome/ChromeDriver version and
 the initial session capabilities.
 
+### `mobile: ultronSnapshot`, `mobile: ultronAct`, `mobile: ultronAssert`, `mobile: ultronRecycler`, `mobile: ultronLastResult`
+
+Mixed View/Compose hierarchy snapshots, View property matchers and Espresso Ultron operations with a
+post-operation snapshot. Compose semantics are included in the `composeOn` flavor; explicit snapshots
+accept `useUnmergedTree` (default `true`). See [View and Compose snapshots for LLM agents](../guides/llm-views.md) for parameters,
+examples, supported properties and failure handling. These extensions preserve standard W3C results.
+
 ### `mobile: webAtoms`
 
 Executes a chain of [Espresso web atoms](https://developer.android.com/training/testing/espresso/web)
 on the specified webview element.
+
+In this fork, JavaScript enabling and each individual chain step run through Ultron's Espresso Web
+executor with retry handling and lifecycle listeners. Retrying a failed step does not replay earlier
+successful steps. The native result of the final `WebInteraction.get()` is preserved, including
+`Evaluation` objects. This extension operates through instrumentation; switching to a `WEBVIEW_*`
+context continues to use Chromedriver.
 
 #### Parameters
 
@@ -1908,6 +1921,12 @@ Executes a [UiAutomator](https://developer.android.com/training/testing/ui-autom
 on one or more elements. This method can be useful for interacting with elements outside of the
 application under test.
 
+In this fork, each selected operation runs through Ultron's UI Automator executor, including its
+retry policy and lifecycle listeners. The target is resolved again on each attempt. Boolean getters
+such as `isEnabled` return values, including `false`; they are not assertions. The existing selection
+contract is preserved: no matches without an `index` return an empty array, while an invalid `index`
+returns an error before executing an operation. Specify `index` to act on a single matching element.
+
 #### Parameters
 
 |Name|Type|Description|
@@ -1924,3 +1943,15 @@ will contain only one entry.
 
 
 [^elementid]: Use `element` in driver versions earlier than 2.29.0.
+
+### `mobile: ultronComposeAct`, `mobile: ultronComposeAssert`
+
+Explicit Compose operations independent of the `driver` setting, requiring `composeOn`.
+Both require a Compose `matcher: {name,args?}` and accept `useUnmergedTree` (default true),
+`timeoutMs` (0..60000), `name`, and operation-specific `options`. Actions require `action`;
+assertions accept `assertion` (default `exists`). Results contain `operation` (including
+`backend: "compose"`) and a post-operation mixed snapshot, also saved in `ultronLastResult`.
+
+See [Ultron Compose operations](../guides/compose-operations.md) for all actions, checks,
+parameters, matcher syntax and limitations. MCP exposes the same operations directly as
+`ultron_compose_act` and `ultron_compose_assert`.

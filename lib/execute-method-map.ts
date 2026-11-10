@@ -4,6 +4,38 @@ import {AndroidDriver} from 'appium-android-driver';
 export const executeMethodMap = {
   ...AndroidDriver.executeMethodMap,
 
+  'mobile: ultronSnapshot': {
+    command: 'mobileUltronSnapshot',
+    params: {optional: ['maxDepth', 'maxNodes', 'useUnmergedTree']},
+  },
+  'mobile: ultronAct': {
+    command: 'mobileUltronAct',
+    params: {
+      required: ['matcher', 'action'],
+      optional: ['text', 'timeoutMs', 'offsetX', 'offsetY', 'keyCode', 'metaState', 'flags', 'autoScroll', 'name'],
+    },
+  },
+  'mobile: ultronAssert': {
+    command: 'mobileUltronAssert',
+    params: {required: ['matcher'], optional: ['condition', 'exists', 'timeoutMs']},
+  },
+  'mobile: ultronComposeAct': {
+    command: 'mobileUltronComposeAct',
+    params: {required: ['matcher', 'action'], optional: ['text', 'itemMatcher', 'options', 'useUnmergedTree', 'timeoutMs', 'name']},
+  },
+  'mobile: ultronComposeAssert': {
+    command: 'mobileUltronComposeAssert',
+    params: {required: ['matcher'], optional: ['assertion', 'text', 'expected', 'condition', 'options', 'useUnmergedTree', 'timeoutMs', 'name']},
+  },
+  'mobile: ultronLastResult': {command: 'mobileUltronLastResult'},
+  'mobile: ultronRecycler': {
+    command: 'mobileUltronRecycler',
+    params: {
+      required: ['matcher', 'action'],
+      optional: ['position', 'itemMatcher', 'childMatcher', 'condition', 'itemCount', 'searchLimit', 'text', 'timeoutMs', 'name'],
+    },
+  },
+
   'mobile: swipe': {
     command: 'mobileSwipe',
     params: {

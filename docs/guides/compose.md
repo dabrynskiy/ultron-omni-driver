@@ -34,6 +34,13 @@ The following driver functionality has Compose mode-specific behavior:
 
 Calling other driver element-specific APIs not listed above would most likely throw an exception.
 
+## Ultron operations for MCP and Appium
+
+The explicit [Ultron Compose operations](compose-operations.md) add Compose actions, state/text
+assertions, Lazy scrolling, IME, accessibility actions, progress, selection and clipboard support.
+Use `mobile: ultronComposeAct` / `mobile: ultronComposeAssert`, or MCP tools
+`ultron_compose_act` / `ultron_compose_assert`, without changing the standard subdriver setting.
+
 ## Troubleshooting
 
 Refer to the [Jetpack Compose Issues](../troubleshooting/compose.md) guide for handling potential

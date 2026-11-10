@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {promises as nodeFs} from 'node:fs';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {describe, it, afterEach} from 'node:test';
 
@@ -53,10 +54,10 @@ describe('espresso-runner', function () {
   });
 
   describe('buildNewModServer', function () {
-    function createRunner() {
+    function createRunner(tmpDir = 'tmp') {
       return new EspressoRunner(log, {
         adb: {curDeviceId: 'emulator-5554'} as ADB,
-        tmpDir: 'tmp',
+        tmpDir,
         host: 'localhost',
         systemPort: 4724,
         devicePort: 6790,
@@ -92,6 +93,35 @@ describe('espresso-runner', function () {
       sinon.assert.calledOnce(buildStub);
       sinon.assert.calledOnce(copyStub);
       sinon.assert.callOrder(rmStub, mkdirStub, walkStub, buildStub, copyStub);
+    });
+
+    it('should copy the renamed Gradle APK into the Appium server cache without a legacy APK', async function () {
+      const tmpDir = await nodeFs.mkdtemp(path.join(tmpdir(), 'espresso-renamed-apk-'));
+      const outputDir = path.join(
+        tmpDir,
+        'espresso-server-emulator-5554',
+        'app',
+        'build',
+        'outputs',
+        'apk',
+        'androidTest',
+        'debug',
+      );
+      const apkContent = Buffer.from('newly built driver APK');
+      sandbox.stub(fs, 'walkDir').resolves();
+      sandbox.stub(ServerBuilder.prototype, 'build').callsFake(async () => {
+        await nodeFs.mkdir(outputDir, {recursive: true});
+        await nodeFs.writeFile(path.join(outputDir, 'ultron-omni-driver.apk'), apkContent);
+      });
+
+      try {
+        const runner = createRunner(tmpDir);
+        await runner.buildNewModServer();
+        assert.deepStrictEqual(await nodeFs.readFile(runner.modServerPath), apkContent);
+        await assert.rejects(nodeFs.access(path.join(outputDir, 'app-debug-androidTest.apk')), {code: 'ENOENT'});
+      } finally {
+        await nodeFs.rm(tmpDir, {recursive: true, force: true});
+      }
     });
 
     for (const code of ['EBUSY', 'EACCES']) {

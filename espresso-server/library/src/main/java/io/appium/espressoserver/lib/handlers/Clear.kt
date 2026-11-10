@@ -22,14 +22,14 @@ import io.appium.espressoserver.lib.handlers.exceptions.InvalidElementStateExcep
 import io.appium.espressoserver.lib.model.AppiumParams
 import io.appium.espressoserver.lib.model.EspressoElement
 
-import androidx.test.espresso.action.ViewActions.clearText
+import io.appium.espressoserver.lib.helpers.ultron
 
 class Clear : RequestHandler<AppiumParams, Unit> {
 
     override fun handleEspresso(params: AppiumParams) {
         val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
         try {
-            viewInteraction.perform(clearText())
+            viewInteraction.ultron().clearText()
         } catch (e: PerformException) {
             throw InvalidElementStateException("clear", params.elementId!!, e)
         }

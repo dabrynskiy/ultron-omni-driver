@@ -20,6 +20,7 @@ import io.appium.espressoserver.lib.helpers.AndroidLogger
 import io.appium.espressoserver.lib.helpers.ComposeViewCache
 import io.appium.espressoserver.lib.helpers.EspressoViewsCache
 import io.appium.espressoserver.lib.helpers.extensions.withPermit
+import io.appium.espressoserver.lib.llm.UltronSnapshots
 import java.util.*
 import java.util.concurrent.Semaphore
 
@@ -40,6 +41,7 @@ object GlobalSession {
         get() = SESSION_GUARD.withPermit { _sessionId != null }
     
     fun create(capabilities: SessionParams.W3CCapabilities): GlobalSession {
+        UltronSnapshots.reset()
         return SESSION_GUARD.withPermit {
             _sessionId?.let {
                 AndroidLogger.warn("Got request for new session creation while the one " +
@@ -54,6 +56,7 @@ object GlobalSession {
     }
 
     fun delete() {
+        UltronSnapshots.reset()
         SESSION_GUARD.withPermit {
             _sessionId = null
             _capabilities = null

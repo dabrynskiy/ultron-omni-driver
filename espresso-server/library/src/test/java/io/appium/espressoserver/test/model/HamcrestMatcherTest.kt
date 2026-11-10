@@ -150,4 +150,12 @@ class HamcrestMatcherTest {
         assertTrue(matcher.matches("Hello World"))
         assertFalse(matcher.matches("Hello World!"))
     }
+
+    @Test
+    fun `class-like strings remain strings when the factory does not require a Class`() {
+        for (text in listOf("String", "Integer", "android.widget.TextView", "String.class")) {
+            val json = g.toJson(mapOf("name" to "equalTo", "args" to listOf(text)))
+            assertTrue(g.fromJson(json, HamcrestMatcher::class.java).invoke().matcher.matches(text))
+        }
+    }
 }

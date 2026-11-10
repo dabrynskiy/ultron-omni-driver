@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {fs} from 'appium/support.js';
 
 let PACKAGE_INFO: {manifestPath: string; manifestPayload: Record<string, any>} | null = null;
-const MODULE_NAME = 'appium-espresso-driver';
+const MODULE_NAME = 'ultron-omni-driver';
 const FILENAME = fileURLToPath(import.meta.url);
 
 /**

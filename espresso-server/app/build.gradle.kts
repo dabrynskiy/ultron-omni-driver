@@ -2,10 +2,38 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+import com.android.build.api.artifact.ArtifactTransformationRequest
+import com.android.build.api.artifact.SingleArtifact
 import io.appium.espressoserver.gradle.withCapabilityVersion
 import io.appium.espressoserver.jvmtarget.AppiumJvmTarget
 import org.gradle.api.GradleException
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+abstract class RenameDriverApk : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val inputDirectory: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @get:Internal
+    lateinit var transformationRequest: ArtifactTransformationRequest<RenameDriverApk>
+
+    @TaskAction
+    fun rename() {
+        // This directory may still contain APKs produced before the filename changed.
+        val outputDir = outputDirectory.get().asFile
+        check(outputDir.deleteRecursively()) { "Cannot clean driver APK directory: $outputDir" }
+        check(outputDir.mkdirs()) { "Cannot create driver APK directory: $outputDir" }
+        transformationRequest.submit(this) { artifact ->
+            check(artifact.filters.isEmpty()) { "The driver must be built as a single APK" }
+            outputDirectory.file("ultron-omni-driver.apk").get().asFile.also { output ->
+                File(artifact.outputFile).copyTo(output, overwrite = true)
+            }
+        }
+    }
+}
 
 val appiumCompileSdk = project.property("appiumCompileSdk") as String
 val appiumMinSdk = project.property("appiumMinSdk") as String
@@ -79,7 +107,25 @@ android {
     }
 
     packaging {
-        resources.excludes.add("META-INF/**")
+        // Keep third-party license/notice files when combining dependency archives.
+        resources.excludes.addAll(listOf("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/INDEX.LIST"))
+        resources.merges.addAll(listOf("META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/DEPENDENCIES", "META-INF/AL2.0", "META-INF/LGPL2.1"))
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.androidTest?.let { androidTest ->
+            val renameApk = tasks.register<RenameDriverApk>(
+                "rename${androidTest.name.replaceFirstChar { it.uppercase() }}Apk",
+            ) {
+                outputDirectory.set(layout.buildDirectory.dir("outputs/apk/androidTest/${variant.name}"))
+            }
+            val request = androidTest.artifacts.use(renameApk)
+                .wiredWithDirectories(RenameDriverApk::inputDirectory, RenameDriverApk::outputDirectory)
+                .toTransformMany(SingleArtifact.APK)
+            renameApk.configure { transformationRequest = request }
+        }
     }
 }
 
@@ -98,6 +144,7 @@ kotlin {
 
 dependencies {
     androidTestImplementation(project(":library"))
+    androidTestImplementation("com.google.guava:guava:33.3.1-android")
     androidTestImplementation(libs.junit) {
         withCapabilityVersion(project, "appiumJUnitVersion", libs.versions.junit.get())
     }

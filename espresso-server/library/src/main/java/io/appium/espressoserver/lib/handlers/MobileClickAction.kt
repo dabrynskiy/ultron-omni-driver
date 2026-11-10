@@ -17,6 +17,7 @@
 package io.appium.espressoserver.lib.handlers
 
 import androidx.test.espresso.action.GeneralClickAction
+import io.appium.espressoserver.lib.helpers.ultron
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
 import io.appium.espressoserver.lib.model.EspressoElement
 import io.appium.espressoserver.lib.model.MobileClickActionParams
@@ -33,7 +34,7 @@ class MobileClickAction : RequestHandler<MobileClickActionParams, Void?> {
             params.buttonState
         )
         val viewInteraction = EspressoElement.getViewInteractionById(params.elementId)
-        viewInteraction.perform(clickAction)
+        viewInteraction.ultron().perform(clickAction)
         return null
     }
 }

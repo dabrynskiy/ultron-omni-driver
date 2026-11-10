@@ -15,7 +15,8 @@ export function suspendChromedriverProxy(this: EspressoDriver): void {
 }
 
 /**
- * Runs a chain of Espresso web atoms (see https://developer.android.com/training/testing/espresso/web for reference)
+ * Runs a chain of Espresso web atoms through Ultron's web executor
+ * (see https://developer.android.com/training/testing/espresso/web for reference).
  *
  * Takes JSON of the form
  *

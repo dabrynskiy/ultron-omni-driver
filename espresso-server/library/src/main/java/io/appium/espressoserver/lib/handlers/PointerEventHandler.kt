@@ -16,13 +16,14 @@
 
 package io.appium.espressoserver.lib.handlers
 
+import io.appium.espressoserver.lib.helpers.ultron
+
 import android.content.res.Resources
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.MotionEvent.*
 import android.view.ViewConfiguration
 import androidx.test.espresso.UiController
-import androidx.test.espresso.action.ViewActions.*
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 import io.appium.espressoserver.lib.helpers.AndroidLogger
@@ -180,21 +181,21 @@ class PointerEventHandler(private val touchType: TouchType) : RequestHandler<Mot
     private fun handleClick(params: MotionEventParams) {
         params.targetElement
                 ?: throw InvalidArgumentException("Element ID must not be blank for click event")
-        EspressoElement.getViewInteractionById(params.targetElement).perform(click())
+        EspressoElement.getViewInteractionById(params.targetElement).ultron().click()
     }
 
     @Throws(AppiumException::class)
     private fun handleDoubleClick(params: MotionEventParams) {
         params.targetElement
                 ?: throw InvalidArgumentException("Element ID must not be blank for double click event")
-        EspressoElement.getViewInteractionById(params.targetElement).perform(doubleClick())
+        EspressoElement.getViewInteractionById(params.targetElement).ultron().doubleClick()
     }
 
     @Throws(AppiumException::class)
     private fun handleLongClick(params: MotionEventParams) {
         params.targetElement
                 ?: throw InvalidArgumentException("Element ID must not be blank for long click event")
-        EspressoElement.getViewInteractionById(params.targetElement).perform(longClick())
+        EspressoElement.getViewInteractionById(params.targetElement).ultron().longClick()
     }
 
     @Throws(AppiumException::class)

@@ -25,8 +25,7 @@ import io.appium.espressoserver.lib.handlers.exceptions.InvalidArgumentException
 import io.appium.espressoserver.lib.model.EspressoElement
 import io.appium.espressoserver.lib.model.TextValueParams
 
-import androidx.test.espresso.action.ViewActions.replaceText
-import androidx.test.espresso.action.ViewActions.typeText
+import io.appium.espressoserver.lib.helpers.ultron
 import io.appium.espressoserver.lib.handlers.exceptions.InvalidElementStateException
 import io.appium.espressoserver.lib.helpers.AndroidLogger
 import io.appium.espressoserver.lib.viewaction.ViewTextGetter
@@ -51,11 +50,12 @@ class ElementValue(private val isReplacing: Boolean) : RequestHandler<TextValueP
         }
 
         val viewInteraction = EspressoElement.getViewInteractionById(elementId)
+        val ultronInteraction = viewInteraction.ultron()
         if (isReplacing) {
-            viewInteraction.perform(replaceText(value))
+            ultronInteraction.replaceText(value)
         } else {
             try {
-                viewInteraction.perform(typeText(value))
+                ultronInteraction.typeText(value)
             } catch (e: PerformException) {
                 throw InvalidElementStateException("sendKeys/setValueImmediate", params.elementId!!, e)
             } catch (e: RuntimeException) {
@@ -65,10 +65,10 @@ class ElementValue(private val isReplacing: Boolean) : RequestHandler<TextValueP
                 AndroidLogger.debug("Trying replaceText action as a workaround to type the '$value' text into the input field")
                 @Suppress("ReplaceGetOrSet") val currentText = ViewTextGetter().get(viewInteraction)
                 if (currentText.rawText.isEmpty() || currentText.isHint) {
-                    viewInteraction.perform(replaceText(value))
+                    ultronInteraction.replaceText(value)
                 } else {
                     AndroidLogger.debug("Current input field's text: '$currentText'")
-                    viewInteraction.perform(replaceText(currentText.toString() + value))
+                    ultronInteraction.replaceText(currentText.toString() + value)
                 }
             }
         }

@@ -12,6 +12,13 @@ Contributions to this project are welcome! To start off, clone it from GitHub an
 npm install
 ```
 
+This is the independent `ultron-omni-driver` fork. Retain upstream license/copyright notices and
+describe modifications in `NOTICE`. Run `npm run check:package` before a release; `npm pack` also
+runs this check automatically. Android APKs, IDE state, signing keys, local properties and Gradle
+caches must not be distributed. The npm package includes the Android sources needed to build for
+each target application. Distribute standalone APKs only from a deliberate build with the intended
+target package and signing configuration, retaining dependency license/notice files.
+
 To build the project:
 
 ```bash

@@ -17,6 +17,7 @@
 package io.appium.espressoserver.lib.handlers
 
 import io.appium.espressoserver.lib.handlers.exceptions.AppiumException
+import io.appium.espressoserver.lib.helpers.ultron
 import io.appium.espressoserver.lib.model.EspressoElement
 import io.appium.espressoserver.lib.model.OrientationParams
 
@@ -49,9 +50,9 @@ class SetOrientation : RequestHandler<OrientationParams, Void?> {
 
         try {
             if (orientation.equals(OrientationType.LANDSCAPE.name, ignoreCase = true)) {
-                viewInteraction.perform(orientationLandscape())
+                viewInteraction.ultron().perform(orientationLandscape())
             } else {
-                viewInteraction.perform(orientationPortrait())
+                viewInteraction.ultron().perform(orientationPortrait())
             }
             return null
         } catch (e: Exception) {
