@@ -5,8 +5,8 @@ import org.gradle.api.GradleException
 /**
  * Normalizes and validates `appiumJvmTarget` / `-PappiumJvmTarget=…` from Gradle properties.
  *
- * Normalizes values (e.g. `1_8`, `8`, `VERSION_1_8`). Default `1.8` is the project baseline for emitted JVM
- * bytecode (Java 8 language level). Call sites map the returned string to [org.jetbrains.kotlin.gradle.dsl.JvmTarget].
+ * Normalizes values (e.g. `1_8`, `8`, `VERSION_1_8`). The project defaults to Java 11 bytecode.
+ * Call sites map the returned string to [org.jetbrains.kotlin.gradle.dsl.JvmTarget].
  */
 object AppiumJvmTarget {
 

@@ -44,6 +44,8 @@ signing and dependency compatibility requirements still apply.
 -   Go through the [__Getting Started__](./getting-started/index.md) steps to get set up
 -   Use the [__snapshot and View/RecyclerView guide__](./guides/llm-views.md) for observation and action APIs
 -   Explore [__Ultron Compose operations__](./guides/compose-operations.md) for semantics actions and assertions
+-   Run [__batch operations__](./guides/batch-operations.md) with snapshots only on the first failure
+-   [__Record MCP test cases__](./guides/recording-scenarios.md) as reusable batch JSON scenarios
 -   Follow [__MCP setup__](https://github.com/dabrynskiy/ultron-omni-driver/blob/master/packages/ultron-mcp/README.md) for standalone or Appium MCP use
 -   Browse the [__Reference__](./reference/scripts.md) documentation for everything exposed by the driver
 -   Read the different [__Guides__](./guides/usage-as-library.md) for a variety of instructions, tips and tricks

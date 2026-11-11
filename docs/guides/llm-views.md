@@ -73,7 +73,10 @@ await driver.execute('mobile: ultronAct', {
 32-bit integer bitmasks. The matched View must be displayed; key events go to the current focus,
 without automatically focusing the matched View. Focus the intended input before sending keys.
 Omitting the options uses Ultron's native integer key action. Extended options retain Espresso's
-injection handling and Back synchronization, and are reported as a `PRESS_KEY` operation.
+constraints and Back synchronization, and are reported as a `PRESS_KEY` operation. Hardware key
+events use Espresso injection. Events with `FLAG_SOFT_KEYBOARD` use Android's input-connection
+path to the focused window, after the IME stage, so the IME cannot consume and re-dispatch DOWN
+after UP. Each soft-keyboard event is followed by main-thread idle synchronization.
 
 `autoScroll` optionally calls Ultron's `withAutoScroll` for this action only; omission preserves the
 configured default. It controls actions for which Ultron implements that switch, including ordinary

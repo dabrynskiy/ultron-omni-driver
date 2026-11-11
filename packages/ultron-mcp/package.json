@@ -21,6 +21,7 @@
     "lifecycle.mjs",
     "snapshot-match.mjs",
     "compose.mjs",
+    "recording.mjs",
     "bin",
     "examples",
     "README.md",

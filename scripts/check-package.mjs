@@ -40,7 +40,9 @@ try {
       throw new Error(`Package is missing ${required}`);
     }
   }
-  process.stdout.write(`Package check passed (${files.length} files; no local APKs, credential files or build caches).\n`);
+  process.stdout.write(
+    `Package check passed (${files.length} files; no local APKs, credential files or build caches).\n`,
+  );
 } finally {
   await rm(cache, {recursive: true, force: true});
 }

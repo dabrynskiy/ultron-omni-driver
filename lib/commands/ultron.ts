@@ -22,8 +22,97 @@ export interface UltronSnapshotResult {
 }
 
 export interface UltronOperationResult {
-  operation: {status: 'success' | 'failure'; name: string; type: string; durationMs: number; error: string | null; backend?: 'espresso' | 'compose'};
+  operation: {
+    status: 'success' | 'failure';
+    name: string;
+    type: string;
+    durationMs: number;
+    error: string | null;
+    backend?: 'espresso' | 'compose';
+  };
   snapshot: UltronSnapshotResult;
+  value?: unknown;
+  element?: Record<string, string> | null;
+}
+
+export type UltronBatchCommand =
+  | 'ultronAct'
+  | 'ultronAssert'
+  | 'ultronComposeAct'
+  | 'ultronComposeAssert'
+  | 'ultronRecycler'
+  | 'ultronBack'
+  | 'ultronHideKeyboard'
+  | 'ultronElement';
+
+export interface UltronBatchStep {
+  id: string;
+  command: UltronBatchCommand;
+  /** The same parameters as the corresponding mobile command, without a session ID. */
+  params: Record<string, unknown>;
+}
+
+export interface UltronBatchResult {
+  schemaVersion: 1;
+  status: 'success' | 'failure';
+  failedStepId: string | null;
+  durationMs: number;
+  steps: {
+    id: string;
+    command: UltronBatchCommand;
+    status: 'success' | 'failure' | 'skipped';
+    operation: UltronOperationResult['operation'] | null;
+    /** Only the failed step has a snapshot, regardless of automatic snapshot settings. */
+    snapshot: UltronSnapshotResult | null;
+    value?: unknown;
+    element?: Record<string, string> | null;
+  }[];
+}
+
+export async function mobileUltronBack(this: EspressoDriver): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_back',
+    'POST',
+    {},
+  )) as UltronOperationResult;
+}
+
+export async function mobileUltronHideKeyboard(this: EspressoDriver): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_hide_keyboard',
+    'POST',
+    {},
+  )) as UltronOperationResult;
+}
+
+export async function mobileUltronElement(
+  this: EspressoDriver,
+  backend: string,
+  using: string,
+  value: string,
+  action: string,
+  text?: string,
+  requireUnique?: boolean,
+): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command('/appium/execute_mobile/ultron_element', 'POST', {
+    backend,
+    using,
+    value,
+    action,
+    ...(text === undefined ? {} : {text}),
+    ...(requireUnique === undefined ? {} : {requireUnique}),
+  })) as UltronOperationResult;
+}
+
+export async function mobileUltronBatch(
+  this: EspressoDriver,
+  steps: UltronBatchStep[],
+  schemaVersion: number = 1,
+): Promise<UltronBatchResult> {
+  return (await this.espresso.jwproxy.command('/appium/execute_mobile/ultron_batch', 'POST', {
+    schemaVersion,
+    steps,
+  })) as UltronBatchResult;
 }
 
 export async function mobileUltronSnapshot(
@@ -59,8 +148,9 @@ export async function mobileUltronAct(
     text,
     timeoutMs,
     ...Object.fromEntries(
-      Object.entries({offsetX, offsetY, keyCode, metaState, flags, autoScroll, name})
-        .filter(([, value]) => value !== undefined),
+      Object.entries({offsetX, offsetY, keyCode, metaState, flags, autoScroll, name}).filter(
+        ([, value]) => value !== undefined,
+      ),
     ),
   })) as UltronOperationResult;
 }
@@ -105,8 +195,19 @@ export async function mobileUltronRecycler(
   return (await this.espresso.jwproxy.command('/appium/execute_mobile/ultron_recycler', 'POST', {
     matcher,
     action,
-    ...Object.fromEntries(Object.entries({position, itemMatcher, childMatcher, condition, itemCount, searchLimit, text, timeoutMs, name})
-      .filter(([, value]) => value !== undefined)),
+    ...Object.fromEntries(
+      Object.entries({
+        position,
+        itemMatcher,
+        childMatcher,
+        condition,
+        itemCount,
+        searchLimit,
+        text,
+        timeoutMs,
+        name,
+      }).filter(([, value]) => value !== undefined),
+    ),
   })) as UltronOperationResult;
 }
 
@@ -121,9 +222,15 @@ export async function mobileUltronComposeAct(
   timeoutMs?: number,
   name?: string,
 ): Promise<UltronOperationResult> {
-  return await this.espresso.jwproxy.command('/appium/execute_mobile/ultron_compose_act', 'POST',
-    Object.fromEntries(Object.entries({matcher, action, text, itemMatcher, options, useUnmergedTree, timeoutMs, name})
-      .filter(([, value]) => value !== undefined))) as UltronOperationResult;
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_compose_act',
+    'POST',
+    Object.fromEntries(
+      Object.entries({matcher, action, text, itemMatcher, options, useUnmergedTree, timeoutMs, name}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  )) as UltronOperationResult;
 }
 
 export async function mobileUltronComposeAssert(
@@ -138,9 +245,15 @@ export async function mobileUltronComposeAssert(
   timeoutMs?: number,
   name?: string,
 ): Promise<UltronOperationResult> {
-  return await this.espresso.jwproxy.command('/appium/execute_mobile/ultron_compose_assert', 'POST',
-    Object.fromEntries(Object.entries({matcher, assertion, text, expected, condition, options, useUnmergedTree, timeoutMs, name})
-      .filter(([, value]) => value !== undefined))) as UltronOperationResult;
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_compose_assert',
+    'POST',
+    Object.fromEntries(
+      Object.entries({matcher, assertion, text, expected, condition, options, useUnmergedTree, timeoutMs, name}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  )) as UltronOperationResult;
 }
 
 /** Bounded Compose semantics DSL, independent of Espresso matchers. */

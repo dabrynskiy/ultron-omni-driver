@@ -1,8 +1,10 @@
 package io.appium.espressoserver.test.ultron
 
+import android.content.Context
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.test.core.app.ActivityScenario
@@ -104,6 +106,31 @@ class ViewSnapshotHttpTest {
         assertEquals("success", closed.getAsJsonObject("operation")["status"].asString)
         assertEquals("CLOSE_SOFT_KEYBOARD", closed.getAsJsonObject("operation")["type"].asString)
         assertEquals("captured", closed.getAsJsonObject("snapshot")["status"].asString)
+    }
+
+    @Test fun softKeyboardKeyPairsKeepDispatchOrderWhileImeStartsAndStops() = withSession { session, scenario ->
+        repeat(20) { iteration ->
+            scenario.onActivity { activity ->
+                activity.input.setText("")
+                activity.input.requestFocus()
+                activity.keyEvents.clear()
+                val ime = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                if (iteration % 2 == 0) ime.showSoftInput(activity.input, InputMethodManager.SHOW_IMPLICIT)
+                else ime.hideSoftInputFromWindow(activity.input.windowToken, 0)
+            }
+            // The displayed matcher is deliberately not the focused input.
+            val value = request(session, "ultron_act",
+                """{"matcher":${viewMatcher(UltronActionActivity.BUTTON_ID)},"action":"pressKey","keyCode":${KeyEvent.KEYCODE_A},"metaState":${KeyEvent.META_SHIFT_ON},"flags":${KeyEvent.FLAG_SOFT_KEYBOARD},"timeoutMs":0}""")
+                .getAsJsonObject("value")
+            assertEquals("iteration $iteration: $value", "success", value.getAsJsonObject("operation")["status"].asString)
+            scenario.onActivity { activity ->
+                val events = activity.keyEvents.filter { it.keyCode == KeyEvent.KEYCODE_A }
+                assertEquals("iteration $iteration: $events", listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), events.map { it.action })
+                assertEquals("iteration $iteration", "A", activity.input.text.toString())
+                assertTrue(events.all { it.metaState and KeyEvent.META_SHIFT_ON != 0 })
+                assertTrue(events.all { it.flags and KeyEvent.FLAG_SOFT_KEYBOARD != 0 })
+            }
+        }
     }
 
     @Test fun autoScrollIsAppliedAfterTimeoutAndDoesNotChangeTheGlobalDefault() = withSession { session, scenario ->

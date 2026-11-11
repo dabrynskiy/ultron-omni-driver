@@ -42,17 +42,47 @@ describe('Ultron LLM execute commands', function () {
   });
 
   it('forwards positional clicks and action options through the execute method map', async function () {
-    await (driver as any).execute('mobile: ultronAct', [{
-      matcher, action: 'clickTopRight', offsetX: -8, offsetY: 0, autoScroll: false, name: 'Continue', timeoutMs: 0,
-    }]);
-    assert.deepEqual(command.firstCall.args, ['/appium/execute_mobile/ultron_act', 'POST', {
-      matcher, action: 'clickTopRight', text: undefined, timeoutMs: 0,
-      offsetX: -8, offsetY: 0, autoScroll: false, name: 'Continue',
-    }]);
-    await (driver as any).execute('mobile: ultronAct', [{matcher, action: 'pressKey', keyCode: 29, metaState: 1, flags: 0}]);
-    assert.deepEqual(command.secondCall.args, ['/appium/execute_mobile/ultron_act', 'POST', {
-      matcher, action: 'pressKey', text: undefined, timeoutMs: undefined, keyCode: 29, metaState: 1, flags: 0,
-    }]);
+    await (driver as any).execute('mobile: ultronAct', [
+      {
+        matcher,
+        action: 'clickTopRight',
+        offsetX: -8,
+        offsetY: 0,
+        autoScroll: false,
+        name: 'Continue',
+        timeoutMs: 0,
+      },
+    ]);
+    assert.deepEqual(command.firstCall.args, [
+      '/appium/execute_mobile/ultron_act',
+      'POST',
+      {
+        matcher,
+        action: 'clickTopRight',
+        text: undefined,
+        timeoutMs: 0,
+        offsetX: -8,
+        offsetY: 0,
+        autoScroll: false,
+        name: 'Continue',
+      },
+    ]);
+    await (driver as any).execute('mobile: ultronAct', [
+      {matcher, action: 'pressKey', keyCode: 29, metaState: 1, flags: 0},
+    ]);
+    assert.deepEqual(command.secondCall.args, [
+      '/appium/execute_mobile/ultron_act',
+      'POST',
+      {
+        matcher,
+        action: 'pressKey',
+        text: undefined,
+        timeoutMs: undefined,
+        keyCode: 29,
+        metaState: 1,
+        flags: 0,
+      },
+    ]);
   });
 
   it('exposes snapshot bounds and the last listener result', async function () {
@@ -72,7 +102,11 @@ describe('Ultron LLM execute commands', function () {
     await (driver as any).execute('mobile: ultronRecycler', [args]);
     assert.deepEqual(command.firstCall.args, ['/appium/execute_mobile/ultron_recycler', 'POST', args]);
     await (driver as any).execute('mobile: ultronRecycler', [{matcher, action: 'assertItemCount', itemCount: 0}]);
-    assert.deepEqual(command.secondCall.args, ['/appium/execute_mobile/ultron_recycler', 'POST', {matcher, action: 'assertItemCount', itemCount: 0}]);
+    assert.deepEqual(command.secondCall.args, [
+      '/appium/execute_mobile/ultron_recycler',
+      'POST',
+      {matcher, action: 'assertItemCount', itemCount: 0},
+    ]);
     const searched = {matcher, action: 'scrollToItem', itemMatcher: matcher, searchLimit: 7};
     await (driver as any).execute('mobile: ultronRecycler', [searched]);
     assert.deepEqual(command.thirdCall.args, ['/appium/execute_mobile/ultron_recycler', 'POST', searched]);
@@ -83,16 +117,66 @@ describe('Ultron LLM execute commands', function () {
     assert.equal(command.called, false);
   });
 
+  it('sends mixed batches as one device request and preserves failure evidence and skipped steps', async function () {
+    const steps = [
+      {id: 'native', command: 'ultronAct', params: {matcher, action: 'replaceText', text: '', timeoutMs: 0}},
+      {id: 'compose', command: 'ultronComposeAssert', params: {matcher: {name: 'hasTestTag', args: ['title']}}},
+    ];
+    const failed = {
+      status: 'failure',
+      failedStepId: 'native',
+      steps: [
+        {id: 'native', status: 'failure', snapshot: {status: 'captured', roots: []}},
+        {id: 'compose', status: 'skipped', snapshot: null},
+      ],
+    };
+    command.resolves(failed);
+    assert.deepEqual(await (driver as any).execute('mobile: ultronBatch', [{steps}]), failed);
+    assert.deepEqual(command.args, [['/appium/execute_mobile/ultron_batch', 'POST', {schemaVersion: 1, steps}]]);
+  });
+
+  it('routes replayable navigation and explicit-backend locator operations', async function () {
+    await (driver as any).execute('mobile: ultronBack', []);
+    await (driver as any).execute('mobile: ultronHideKeyboard', []);
+    await (driver as any).execute('mobile: ultronElement', [
+      {backend: 'compose', using: '-android viewtag', value: 'input', action: 'replaceText', text: ''},
+    ]);
+    assert.deepEqual(command.args, [
+      ['/appium/execute_mobile/ultron_back', 'POST', {}],
+      ['/appium/execute_mobile/ultron_hide_keyboard', 'POST', {}],
+      [
+        '/appium/execute_mobile/ultron_element',
+        'POST',
+        {backend: 'compose', using: '-android viewtag', value: 'input', action: 'replaceText', text: ''},
+      ],
+    ]);
+  });
+
   it('routes Compose operations independently of the global driver and preserves typed options', async function () {
     const target = {name: 'hasTestTag', args: ['feed']};
-    const args = {matcher: target, action: 'scrollToKey', options: {keyType: 'long', key: '9223372036854775807'}, useUnmergedTree: false, timeoutMs: 0};
+    const args = {
+      matcher: target,
+      action: 'scrollToKey',
+      options: {keyType: 'long', key: '9223372036854775807'},
+      useUnmergedTree: false,
+      timeoutMs: 0,
+    };
     await (driver as any).execute('mobile: ultronComposeAct', [args]);
     assert.deepEqual(command.firstCall.args, ['/appium/execute_mobile/ultron_compose_act', 'POST', args]);
-    const check = {matcher: target, assertion: 'textEquals', expected: ['', 'Saved'], options: {includeEditableText: false}};
+    const check = {
+      matcher: target,
+      assertion: 'textEquals',
+      expected: ['', 'Saved'],
+      options: {includeEditableText: false},
+    };
     await (driver as any).execute('mobile: ultronComposeAssert', [check]);
     assert.deepEqual(command.secondCall.args, ['/appium/execute_mobile/ultron_compose_assert', 'POST', check]);
     await (driver as any).execute('mobile: ultronComposeAssert', [{matcher: target}]);
-    assert.deepEqual(command.thirdCall.args, ['/appium/execute_mobile/ultron_compose_assert', 'POST', {matcher: target}]);
+    assert.deepEqual(command.thirdCall.args, [
+      '/appium/execute_mobile/ultron_compose_assert',
+      'POST',
+      {matcher: target},
+    ]);
   });
 
   it('applies the snapshot setting on the device and reports its current value', async function () {

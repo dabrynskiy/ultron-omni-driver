@@ -21,18 +21,44 @@ export const executeMethodMap = {
   },
   'mobile: ultronComposeAct': {
     command: 'mobileUltronComposeAct',
-    params: {required: ['matcher', 'action'], optional: ['text', 'itemMatcher', 'options', 'useUnmergedTree', 'timeoutMs', 'name']},
+    params: {
+      required: ['matcher', 'action'],
+      optional: ['text', 'itemMatcher', 'options', 'useUnmergedTree', 'timeoutMs', 'name'],
+    },
   },
   'mobile: ultronComposeAssert': {
     command: 'mobileUltronComposeAssert',
-    params: {required: ['matcher'], optional: ['assertion', 'text', 'expected', 'condition', 'options', 'useUnmergedTree', 'timeoutMs', 'name']},
+    params: {
+      required: ['matcher'],
+      optional: ['assertion', 'text', 'expected', 'condition', 'options', 'useUnmergedTree', 'timeoutMs', 'name'],
+    },
   },
   'mobile: ultronLastResult': {command: 'mobileUltronLastResult'},
+  'mobile: ultronBatch': {
+    command: 'mobileUltronBatch',
+    params: {required: ['steps'], optional: ['schemaVersion']},
+  },
+  'mobile: ultronBack': {command: 'mobileUltronBack'},
+  'mobile: ultronHideKeyboard': {command: 'mobileUltronHideKeyboard'},
+  'mobile: ultronElement': {
+    command: 'mobileUltronElement',
+    params: {required: ['backend', 'using', 'value', 'action'], optional: ['text', 'requireUnique']},
+  },
   'mobile: ultronRecycler': {
     command: 'mobileUltronRecycler',
     params: {
       required: ['matcher', 'action'],
-      optional: ['position', 'itemMatcher', 'childMatcher', 'condition', 'itemCount', 'searchLimit', 'text', 'timeoutMs', 'name'],
+      optional: [
+        'position',
+        'itemMatcher',
+        'childMatcher',
+        'condition',
+        'itemCount',
+        'searchLimit',
+        'text',
+        'timeoutMs',
+        'name',
+      ],
     },
   },
 
