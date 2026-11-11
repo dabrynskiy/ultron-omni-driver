@@ -1654,6 +1654,22 @@ Available since driver version 6.0.7.
 W3C WebDriver capabilities. The exact structure may depend on the Chrome/ChromeDriver version and
 the initial session capabilities.
 
+### `mobile: ultronBatch`
+
+Executes Espresso, Compose, RecyclerView, Back, keyboard and locator-based element operations in one Android
+request. Accepts required `steps` and optional `schemaVersion: 1`. Validates all steps before
+execution, stops at the first failure and captures a snapshot for that step only, without changing
+session snapshot settings. See [Batch operations](../guides/batch-operations.md) for the request
+and result contracts, HTTP endpoint, MCP tool and execution limits.
+
+### `mobile: ultronBack`, `mobile: ultronHideKeyboard`, `mobile: ultronElement`
+
+Replayable wrappers around the existing navigation and standard element handlers. Back and hide
+keyboard accept no arguments. Element requires `backend` (`espresso`/`compose`), `using`, `value`
+and `action`, with `text` for text input. It resolves a fresh element per call without changing
+the global backend. Results retain operation/snapshot plus element/getter values; `false` is not
+an assertion failure. See [Batch operations](../guides/batch-operations.md).
+
 ### `mobile: ultronSnapshot`, `mobile: ultronAct`, `mobile: ultronAssert`, `mobile: ultronRecycler`, `mobile: ultronLastResult`
 
 Mixed View/Compose hierarchy snapshots, View property matchers and Espresso Ultron operations with a

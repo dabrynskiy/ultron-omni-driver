@@ -208,18 +208,15 @@ Standalone additionally provides:
 | --- | --- |
 | `ultron_session` | Status, create, attach, close |
 | `ultron_screenshot` | Screenshot returned as a PNG MCP image |
-| `ultron_back` | Android Back followed by a fresh snapshot |
-| `ultron_hide_keyboard` | Hide keyboard followed by a fresh snapshot |
-| `ultron_element` | Find/click/clear/type/replace/read an element with the selected Espresso/Compose backend |
 
-For Compose, call `ultron_settings` with `{"driver":"compose"}`, then for example:
+Back, keyboard and element tools are shared with the Appium plugin. For Compose, use an explicit backend (or select `driver=compose` with `ultron_settings`):
 
 ```json
-{"using":"-android viewtag","value":"submit_button","action":"click"}
+{"backend":"compose","using":"-android viewtag","value":"submit_button","action":"click"}
 ```
 
-Pass this to `ultron_element`. It performs a standard backend operation and explicitly obtains a
-new mixed snapshot after mutations. `ultron_act` and `ultron_assert` remain explicit Espresso View
+Pass this to `ultron_element`. It resolves the locator afresh through the selected backend and returns operation metadata,
+`element`/`value` and a mixed snapshot. The same parameters can be replayed as `ultronElement`. `ultron_act` and `ultron_assert` remain explicit Espresso View
 operations. Boolean reads from `ultron_element` are values, not assertions of test success.
 
 All standalone tool calls are serialized. Direct HTTP requests have a configurable 75-second
@@ -285,21 +282,57 @@ provide these driver extensions.
 | `ultron_compose_act` | Compose actions, Lazy scrolling, IME, semantics actions, selection and clipboard; returns operation + snapshot |
 | `ultron_compose_assert` | Compose states, text/descriptions, ranges, sizes and matcher assertions; returns operation + snapshot |
 | `ultron_recycler` | RecyclerView item search, scrolling, item/child actions, count and existence assertions; returns operation + snapshot |
+| `ultron_batch` | Execute matcher, RecyclerView, navigation and element operations sequentially; stop at the first failure and capture only its snapshot |
+| `ultron_back` | Android Back through Ultron; replayable and recordable |
+| `ultron_hide_keyboard` | Close keyboard through Ultron; replayable and recordable |
+| `ultron_element` | Resolve a locator in an explicit or currently selected backend; act/read without saving cached IDs |
+| `ultron_recording_start` | Start automatic recording, with a test-case name and optional session selector |
+| `ultron_recording_status` | Inspect recording progress, issues and saved draft paths without starting Android |
+| `ultron_recording_finish` | Export a passed recording, or retain a failed draft |
+| `ultron_recording_discard` | Stop recording and retain artifacts marked discarded |
 | `ultron_last_result` | Latest saved Espresso or Compose result or null; not a command journal |
 | `ultron_settings` | Read settings; optionally set `snapshotEnabled` or `driver: "espresso" / "compose"` |
 
-In Appium MCP mode, screenshot, navigation, gestures and session management remain the host's
-built-in tools. The plugin names do not override built-in Appium MCP tools.
+In Appium MCP mode, screenshot, gestures and session management remain the host's
+built-in tools. Use the Ultron Back/keyboard/element tools when those actions must be recorded. The plugin names do not override built-in Appium MCP tools.
 
-For each action/assertion the plugin checks the current setting and enables automatic snapshots
+For each individual action/assertion the plugin checks the current setting and enables automatic snapshots
 if necessary. It preserves operation and snapshot statuses independently. Assertion/action failures
 set MCP `isError: true` and retain the full operation and snapshot. Partial observations remain
 usable; unavailable explicit snapshots are MCP errors. `structuredContent` and JSON text contain
 the same response (null last-result is text only).
 
+`ultron_batch` accepts `steps: [{id, command, params}]` and optional `schemaVersion: 1`.
+Commands are `ultronAct`, `ultronAssert`, `ultronComposeAct`, `ultronComposeAssert` and
+`ultronRecycler`, `ultronBack`, `ultronHideKeyboard` and `ultronElement`; params use the raw driver JSON API. Element steps require an explicit backend. Espresso batch assertions use
+`condition`/`exists`, rather than MCP named assertion aliases. The tool does not change snapshot
+settings: successful/skipped steps have no snapshot, and only the first failed step receives one,
+including when automatic snapshots are disabled. See the [batch guide](../../docs/guides/batch-operations.md)
+for examples, validation, results and transport timeout behavior.
+
 There are no outer retries. After a lost mutation response, observe the UI before deciding to repeat
 the action. Remote WebDriver transport retry configuration is controlled by the host. Calls from
 this plugin are serialized per selected driver; other clients/host tools can still change the UI.
+
+## Record a reusable scenario
+
+1. Prepare the session and initial app state.
+2. Call `ultron_recording_start` with `{"name":"Checkout"}`.
+3. Execute individual UI operations and explicit assertions normally.
+4. Call `ultron_recording_finish` with `{"outcome":"passed"}`.
+
+The finish result returns `scenario`, directly consumable by `ultron_batch`, plus `scenarioPath`,
+`draftPath` and `journalPath`. Commands are recorded after MCP argument normalization. Element
+steps contain locators and the selected backend, not cached IDs. Element getters/lookups are
+also retained because finding a locator can scroll; their values are not assertions. Other
+observations are journaled but not replayed; failed/unknown operations block passed export and are not silently removed.
+Use `outcome: "failed"` or `ultron_recording_discard` to retain an unsuccessful draft.
+
+Files are saved under `.ultron-recordings` in the process working directory by default. Set
+`ULTRON_RECORDINGS_DIR`, or standalone `--recordings-dir /path/scenarios`, to choose a destination.
+Input values are stored literally. Recording is not automatic replay verification; reproduce
+initial state before reusing a scenario. See [Recording scenarios](../../docs/guides/recording-scenarios.md)
+for persistence, session boundaries and error behavior.
 
 ## Execute a test case
 

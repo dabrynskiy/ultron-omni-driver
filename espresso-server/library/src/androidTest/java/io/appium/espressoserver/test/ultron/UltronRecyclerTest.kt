@@ -39,6 +39,21 @@ class UltronRecyclerTest {
         scenario.close()
     }
 
+    @Test fun batchReusesRecyclerOperationsAndStopsBeforeTheNextItemClick() {
+        val body = """{"steps":[
+          {"id":"click","command":"ultronRecycler","params":{"matcher":$list,"action":"click","position":0,"childMatcher":$button,"timeoutMs":0}},
+          {"id":"count","command":"ultronRecycler","params":{"matcher":$list,"action":"assertItemCount","itemCount":79,"timeoutMs":0}},
+          {"id":"never","command":"ultronRecycler","params":{"matcher":$list,"action":"click","position":30,"childMatcher":$button,"timeoutMs":0}}
+        ]}"""
+        val params = gson.fromJson(body, io.appium.espressoserver.lib.handlers.UltronBatchParams::class.java)
+        val result = io.appium.espressoserver.lib.handlers.UltronBatch().handleInternal(params)
+        assertEquals(listOf("success", "failure", "skipped"), result.steps.map { it.status })
+        assertNull(result.steps[0].snapshot)
+        assertTrue(result.steps[1].snapshot!!.nodeCount > 0)
+        assertNull(result.steps[2].snapshot)
+        scenario.onActivity { assertEquals(0, it.selected); assertEquals(1, it.clicks) }
+    }
+
     @Test fun customRecyclerAndAttachedItemMetadataRoundTripIncludingLongStableIds() {
         success(""""action":"scrollToItem","position":60""")
         val snapshot = ViewHierarchyDumper().capture()

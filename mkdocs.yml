@@ -60,6 +60,8 @@ nav:
       - Driver Actions:
           - guides/compose.md
           - guides/compose-operations.md
+          - guides/batch-operations.md
+          - guides/recording-scenarios.md
           - guides/datamatcher-selector.md
           - guides/unlock.md
           - guides/backdoor.md

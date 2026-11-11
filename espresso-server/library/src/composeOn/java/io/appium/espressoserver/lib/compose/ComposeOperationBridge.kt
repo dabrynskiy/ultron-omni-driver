@@ -30,13 +30,20 @@ internal object ComposeOperationBridge {
     fun isOperation(operation: Operation): Boolean = operation is UltronComposeOperation
     fun waitForIdle() = DriverContext.composeTestRule.waitForIdle()
 
-    @OptIn(ExperimentalTestApi::class)
-    fun execute(params: UltronComposeParams, assertion: Boolean): UltronSnapshotResult {
+    fun execute(params: UltronComposeParams, assertion: Boolean): UltronSnapshotResult = prepare(params, assertion).invoke()
+
+    fun prepare(params: UltronComposeParams, assertion: Boolean): () -> UltronSnapshotResult {
         val matcher = ComposeMatchers.parse(params.matcher ?: invalid("matcher is required"))
         val item = params.itemMatcher?.let(ComposeMatchers::parse)
         val condition = params.condition?.let(ComposeMatchers::parse)
         val o = Options(params.options)
         validate(params, assertion, o)
+        return { executePrepared(params, assertion, matcher, item, condition, o) }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    private fun executePrepared(params: UltronComposeParams, assertion: Boolean, matcher: SemanticsMatcher,
+        item: SemanticsMatcher?, condition: SemanticsMatcher?, o: Options): UltronSnapshotResult {
         // Initialize the existing shared rule before Ultron obtains its provider. Never create a second rule.
         val rule = DriverContext.composeTestRule
         val listener = UltronSnapshots.listener

@@ -63,6 +63,8 @@ for the target application; standalone MCP users build and sign an APK as descri
 - [Getting started with Appium](docs/getting-started/index.md)
 - [View/Compose snapshots and View/RecyclerView operations](docs/guides/llm-views.md)
 - [Ultron Compose operations](docs/guides/compose-operations.md)
+- [Batch Espresso/Compose operations with failure-only snapshots](docs/guides/batch-operations.md)
+- [Automatically record MCP actions and assertions as reusable scenarios](docs/guides/recording-scenarios.md)
 - [MCP setup: standalone or Appium plugin](packages/ultron-mcp/README.md)
 - [Ultron framework documentation](https://open-tool.github.io/ultron/docs/) and [source](https://github.com/open-tool/ultron)
 

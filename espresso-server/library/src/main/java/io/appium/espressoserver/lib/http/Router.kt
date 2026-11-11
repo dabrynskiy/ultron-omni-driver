@@ -67,6 +67,10 @@ internal class Router(server: ServerBase) {
         routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_compose_act", UltronComposeOperation(false), UltronComposeParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_compose_assert", UltronComposeOperation(true), UltronComposeParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_recycler", UltronRecycler(), UltronRecyclerParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_batch", UltronBatch(), UltronBatchParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_back", UltronDeviceOperation("ultronBack"), UltronDeviceParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_hide_keyboard", UltronDeviceOperation("ultronHideKeyboard"), UltronDeviceParams::class.java))
+        routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/appium/execute_mobile/ultron_element", UltronDeviceOperation("ultronElement"), UltronDeviceParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/screenshot", ScreenshotHandler(), AppiumParams::class.java))
         routeMap.addRoute(RouteDefinition(Method.POST, "/session/:sessionId/element", FindElement(), Locator::class.java))
         routeMap.addRoute(RouteDefinition(Method.GET, "/session/:sessionId/element/active", FindActive(), AppiumParams::class.java))
@@ -221,6 +225,8 @@ internal class Router(server: ServerBase) {
                 AndroidLogger.debug("Got raw post data: ${abbreviate(it, 300)}")
                 try {
                     if (paramClass == UltronComposeParams::class.java) UltronComposeParams.validateJson(it)
+                    if (paramClass == UltronBatchParams::class.java) UltronBatchParams.validateJson(it)
+                    if (paramClass == UltronDeviceParams::class.java) UltronDeviceParams.validateJson(it)
                     paramClass.cast(Gson().fromJson<AppiumParams>(it, paramClass))
                             ?: return AppiumResponse(InvalidArgumentException("Could not parse JSON: $it"))
                 } catch (e: JsonParseException) {

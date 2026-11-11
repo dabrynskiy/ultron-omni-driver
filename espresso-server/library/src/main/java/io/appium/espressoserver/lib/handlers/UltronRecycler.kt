@@ -19,6 +19,7 @@ import io.appium.espressoserver.lib.llm.RecyclerViewProperties
 import io.appium.espressoserver.lib.llm.UltronSnapshotResult
 import io.appium.espressoserver.lib.llm.UltronSnapshots
 import io.appium.espressoserver.lib.model.AppiumParams
+import io.appium.espressoserver.lib.model.ScopedMatcher
 import io.appium.espressoserver.lib.model.toJsonMatcher
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers.allOf
@@ -71,8 +72,10 @@ class UltronRecyclerParams : AppiumParams() {
  * All View/adapter access stays on Espresso's UI thread, including off-screen holder binding.
  */
 class UltronRecycler : RequestHandler<UltronRecyclerParams, UltronSnapshotResult> {
+    override fun handleInternal(params: UltronRecyclerParams): UltronSnapshotResult = prepare(params).invoke()
+
     @Suppress("UNCHECKED_CAST")
-    override fun handleInternal(params: UltronRecyclerParams): UltronSnapshotResult {
+    internal fun prepare(params: UltronRecyclerParams): () -> UltronSnapshotResult {
         params.validate()
         if (!RecyclerViewProperties.available) throw InvalidArgumentException("The application does not include AndroidX RecyclerView")
         val query = params.matcher!!.toString().toJsonMatcher().query
@@ -82,6 +85,11 @@ class UltronRecycler : RequestHandler<UltronRecyclerParams, UltronSnapshotResult
             parsed.matcher as Matcher<View>
         }
         val action = RecyclerOperation(params, itemMatcher(params.itemMatcher), itemMatcher(params.childMatcher), itemMatcher(params.condition))
+        return { executePrepared(params, query, action) }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun executePrepared(params: UltronRecyclerParams, query: ScopedMatcher, action: RecyclerOperation): UltronSnapshotResult {
         var interaction = onView(query.matcher as Matcher<View>)
         query.scope?.let { interaction = interaction.inRoot(it as Matcher<Root>) }
         var ultron = interaction.ultron()

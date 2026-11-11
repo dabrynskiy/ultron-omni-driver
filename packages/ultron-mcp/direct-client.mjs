@@ -5,6 +5,10 @@ const routes = {
   'mobile: ultronAct': ['POST', 'ultron_act'],
   'mobile: ultronAssert': ['POST', 'ultron_assert'],
   'mobile: ultronRecycler': ['POST', 'ultron_recycler'],
+  'mobile: ultronBatch': ['POST', 'ultron_batch'],
+  'mobile: ultronBack': ['POST', 'ultron_back'],
+  'mobile: ultronHideKeyboard': ['POST', 'ultron_hide_keyboard'],
+  'mobile: ultronElement': ['POST', 'ultron_element'],
   'mobile: ultronLastResult': ['GET', 'ultron_last_result'],
 };
 
@@ -40,30 +44,42 @@ export class AndroidHttpClient {
   }
 
   path(suffix = '') {
-    if (!this.sessionId) {throw new Error('Create or attach a session with ultron_session first');}
+    if (!this.sessionId) {
+      throw new Error('Create or attach a session with ultron_session first');
+    }
     return `/session/${encodeURIComponent(this.sessionId)}${suffix}`;
   }
 
   async create({appPackage, appActivity, autoLaunch = false}, requestOptions = {}) {
-    if (this.sessionId) {throw new Error('A session is already selected. Close it before creating another.');}
+    if (this.sessionId) {
+      throw new Error('A session is already selected. Close it before creating another.');
+    }
     // Do not overwrite a device session owned by another client.
     const existing = await this.request('/sessions', 'GET', undefined, false, requestOptions);
     if (!Array.isArray(existing) || existing.length) {
       throw new Error('The Android server already has a session. Use ultron_session action=attach with its ID.');
     }
     const caps = {appPackage, autoLaunch, ...(appActivity ? {appActivity} : {})};
-    const response = await this.request('/session', 'POST', {
-      capabilities: {alwaysMatch: caps, firstMatch: [{}]},
-    }, true, requestOptions);
+    const response = await this.request(
+      '/session',
+      'POST',
+      {
+        capabilities: {alwaysMatch: caps, firstMatch: [{}]},
+      },
+      true,
+      requestOptions,
+    );
     const id = response.sessionId ?? response.value?.sessionId;
-    if (typeof id !== 'string' || !id) {throw new Error('Android server did not return a session ID');}
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Android server did not return a session ID');
+    }
     this.sessionId = id;
     return {sessionId: id};
   }
 
   async attach(sessionId) {
     const sessions = await this.request('/sessions');
-    if (!Array.isArray(sessions) || !sessions.some(session => session.id === sessionId)) {
+    if (!Array.isArray(sessions) || !sessions.some((session) => session.id === sessionId)) {
       throw new Error('Session not found on this Android server');
     }
     await this.request(`/session/${encodeURIComponent(sessionId)}`);
@@ -77,13 +93,23 @@ export class AndroidHttpClient {
     return {closed: true, restartInstrumentationRequired: true};
   }
 
-  getSettings() {return this.request(this.path('/appium/settings'));}
-  updateSettings(settings) {return this.request(this.path('/appium/settings'), 'POST', {settings});}
+  getSettings() {
+    return this.request(this.path('/appium/settings'));
+  }
+  updateSettings(settings) {
+    return this.request(this.path('/appium/settings'), 'POST', {settings});
+  }
 
   executeScript(script, args = [{}]) {
     const route = routes[script];
-    if (!route) {throw new Error(`Unsupported direct command: ${script}`);}
+    if (!route) {
+      throw new Error(`Unsupported direct command: ${script}`);
+    }
     const [method, command] = route;
-    return this.request(this.path(`/appium/execute_mobile/${command}`), method, method === 'POST' ? args[0] : undefined);
+    return this.request(
+      this.path(`/appium/execute_mobile/${command}`),
+      method,
+      method === 'POST' ? args[0] : undefined,
+    );
   }
 }

@@ -16,7 +16,8 @@ data class UltronOperationInfo(
     val backend: String = "espresso",
 )
 
-data class UltronSnapshotResult(val operation: UltronOperationInfo, val snapshot: ViewSnapshot) {
+data class UltronSnapshotResult(val operation: UltronOperationInfo, val snapshot: ViewSnapshot,
+    val value: Any? = null, val element: io.appium.espressoserver.lib.model.BaseElement? = null) {
     /** Ultron operation names and exception messages can echo typed text or a View's contents. */
     fun redactSensitiveDetails(textInput: Boolean = false): UltronSnapshotResult {
         fun sensitive(nodes: List<*>): Boolean = nodes.any { value ->
@@ -49,7 +50,7 @@ class UltronSnapshotListener(private val capture: (() -> ViewSnapshot)? = null) 
         depth.set(((depth.get() ?: 0) - 1).coerceAtLeast(0))
         if (depth.get() != 0) return
         // A dump failure must never replace the action's native result or exception.
-        val snapshot = try {
+        val snapshot = if (UltronSnapshots.automaticCaptureSuppressed) UltronSnapshots.disabledSnapshot() else try {
             if (ComposeOperationBridge.isOperation(operationResult.operation)) ComposeOperationBridge.waitForIdle()
             capture?.invoke() ?: ViewHierarchyDumper(useUnmergedTree = useUnmergedTree).capture()
         } catch (error: Throwable) {
@@ -85,6 +86,8 @@ class UltronSnapshotListener(private val capture: (() -> ViewSnapshot)? = null) 
 
 object UltronSnapshots {
     val listener = UltronSnapshotListener()
+    private val suppressionDepth = ThreadLocal.withInitial { 0 }
+    internal val automaticCaptureSuppressed: Boolean get() = suppressionDepth.get() > 0
     @Volatile private var captureEnabled = false
     val enabled: Boolean get() = captureEnabled
 
@@ -101,9 +104,21 @@ object UltronSnapshots {
 
     fun reset() = setEnabled(false)
 
-    /** Explicit ultronSnapshot remains available; this gate controls automatic post-operation dumps. */
-    fun captureForOperation(): ViewSnapshot = if (enabled) ViewHierarchyDumper(useUnmergedTree = listener.useUnmergedTree).capture() else ViewSnapshot(
+    /** Batch steps keep operation results but defer capture until the first failed step. */
+    internal fun <T> withoutAutomaticCapture(block: () -> T): T {
+        val previous = suppressionDepth.get()
+        suppressionDepth.set(previous + 1)
+        return try { block() } finally {
+            if (previous == 0) suppressionDepth.remove() else suppressionDepth.set(previous)
+        }
+    }
+
+    internal fun disabledSnapshot() = ViewSnapshot(
         status = "disabled", roots = emptyList(), nodeCount = 0, truncated = false,
         errors = emptyList(), capturedAtMs = System.currentTimeMillis(), durationMs = 0,
     )
+
+    /** Explicit ultronSnapshot remains available; this gate controls automatic post-operation dumps. */
+    fun captureForOperation(): ViewSnapshot = if (enabled && !automaticCaptureSuppressed)
+        ViewHierarchyDumper(useUnmergedTree = listener.useUnmergedTree).capture() else disabledSnapshot()
 }

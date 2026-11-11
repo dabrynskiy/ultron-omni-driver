@@ -8,4 +8,5 @@ internal object ComposeOperationBridge {
     fun isOperation(operation: com.atiurin.ultron.core.common.Operation): Boolean = false
     fun waitForIdle() = Unit
     fun execute(params: UltronComposeParams, assertion: Boolean): UltronSnapshotResult = throw ComposeNotSupportedException()
+    fun prepare(params: UltronComposeParams, assertion: Boolean): () -> UltronSnapshotResult = throw ComposeNotSupportedException()
 }

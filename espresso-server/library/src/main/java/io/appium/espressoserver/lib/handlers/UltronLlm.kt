@@ -13,6 +13,7 @@ import io.appium.espressoserver.lib.llm.UltronSnapshots
 import io.appium.espressoserver.lib.llm.ViewHierarchyDumper
 import io.appium.espressoserver.lib.llm.ViewSnapshot
 import io.appium.espressoserver.lib.model.AppiumParams
+import io.appium.espressoserver.lib.model.ScopedMatcher
 import io.appium.espressoserver.lib.model.toJsonMatcher
 import io.appium.espressoserver.lib.viewaction.PressKeyWithOptions
 import org.hamcrest.Matcher
@@ -88,8 +89,9 @@ class UltronLastResult : RequestHandler<AppiumParams, UltronSnapshotResult?> {
 
 /** Explicit Espresso entry point: no global backend switch and no change to W3C command results. */
 class UltronLlmOperation(private val assertion: Boolean) : RequestHandler<UltronOperationParams, UltronSnapshotResult> {
-    @Suppress("UNCHECKED_CAST")
-    override fun handleInternal(params: UltronOperationParams): UltronSnapshotResult {
+    override fun handleInternal(params: UltronOperationParams): UltronSnapshotResult = prepare(params).invoke()
+
+    internal fun prepare(params: UltronOperationParams): () -> UltronSnapshotResult {
         val matcher = (params.matcher ?: throw InvalidArgumentException("matcher is required")).toString().toJsonMatcher().query
         val timeout = params.timeoutMs
         if (timeout != null && timeout !in 0..60000) throw InvalidArgumentException("timeoutMs must be 0..60000")
@@ -99,6 +101,12 @@ class UltronLlmOperation(private val assertion: Boolean) : RequestHandler<Ultron
         if (assertion && !params.exists && condition != null) throw InvalidArgumentException("condition cannot be combined with exists=false")
         if (!assertion) params.validateAction()
 
+        return { executePrepared(params, matcher, condition) }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun executePrepared(params: UltronOperationParams, matcher: ScopedMatcher, condition: ScopedMatcher?): UltronSnapshotResult {
+        val timeout = params.timeoutMs
         val listener = UltronSnapshots.listener
         listener.beginCommand()
         val start = android.os.SystemClock.elapsedRealtime()
