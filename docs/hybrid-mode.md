@@ -1,1 +1,1 @@
-Moved to the driver docs website: https://appium.github.io/appium-espresso-driver/latest/guides/hybrid/
+See the [hybrid applications guide](guides/hybrid.md).

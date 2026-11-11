@@ -1,1 +1,1 @@
-Moved to the driver docs website: https://appium.github.io/appium-espresso-driver/latest/guides/activity-startup/
+See the [activity startup guide](guides/activity-startup.md).

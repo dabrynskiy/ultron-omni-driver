@@ -34,6 +34,7 @@ plugins:
 nav:
   - index.md
   - overview.md
+  - comparison.md
   - Getting Started: getting-started/index.md
   - Reference:
       - Command Line:

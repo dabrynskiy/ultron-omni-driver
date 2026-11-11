@@ -1,1 +1,1 @@
-Moved to the driver docs website: https://appium.github.io/appium-espresso-driver/latest/guides/datamatcher-selector/
+See the [DataMatcher selector guide](guides/datamatcher-selector.md).

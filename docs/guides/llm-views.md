@@ -2,6 +2,12 @@
 title: View and Compose snapshots for LLM agents
 ---
 
+These APIs combine [Ultron](https://open-tool.github.io/ultron/docs/) operation execution with
+the fork's JSON snapshot collector. See the [comparison with Appium Espresso Driver](../comparison.md)
+for their purpose and scope. Ultron's [RecyclerView API](https://open-tool.github.io/ultron/docs/android/recyclerview/)
+and [lifecycle listeners](https://open-tool.github.io/ultron/docs/common/listeners/) explain the
+underlying mechanisms; the remote contract supported by this fork is documented below.
+
 The Ultron extensions describe Android Views and, in the `composeOn` flavor, embedded Compose
 semantics trees. They execute Espresso actions/assertions with a post-operation snapshot. Explicit
 [Compose operations](compose-operations.md) provide the same result format for semantics nodes.
@@ -90,7 +96,7 @@ combined with `condition`. Window selection belongs in `matcher.scope`, not `con
 Invalid arguments/selectors raise Appium errors. Execution/assertion failures return an operation
 with `status: "failure"` and its snapshot; callers must inspect this status to determine test success.
 
-The MCP `ultron_assert` tool also offers [named assertions](../../packages/ultron-mcp/README.md#named-assertions)
+The MCP `ultron_assert` tool also offers [named assertions](https://github.com/dabrynskiy/ultron-omni-driver/blob/master/packages/ultron-mcp/README.md#named-assertions)
 such as `assertion: "isDisplayed"`, `assertion: "hasText", text: "Saved"`, and
 `assertion: "isDisplayingAtLeast", percentage: 90`. MCP converts these to the existing driver
 `condition`/`exists` arguments; the direct `mobile: ultronAssert` contract is unchanged.
@@ -284,7 +290,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew \
   -Pandroid.testInstrumentationRunnerArguments.package=io.appium.espressoserver.test.ultron
 ```
 
-The [MCP server](../../packages/ultron-mcp/README.md) exposes these extensions directly over the
+The [MCP server](https://github.com/dabrynskiy/ultron-omni-driver/blob/master/packages/ultron-mcp/README.md) exposes these extensions directly over the
 Android HTTP connection, without Appium. An optional plugin also supports Appium MCP remote sessions.
 
 Standard factory arguments are converted according to the factory parameter: Class arguments accept

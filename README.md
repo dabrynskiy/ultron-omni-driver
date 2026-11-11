@@ -6,7 +6,45 @@ This is not an official Appium release. Upstream copyright and license notices a
 see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 [Source and issues](https://github.com/dabrynskiy/ultron-omni-driver) ·
-[Snapshot guide](docs/guides/llm-views.md) · [MCP setup](packages/ultron-mcp/README.md)
+[Documentation](docs/index.md) · [Comparison with upstream](docs/comparison.md) ·
+[Ultron documentation](https://open-tool.github.io/ultron/docs/)
+
+## Why Ultron Omni Driver?
+
+This fork adds an observation-and-action API for Android test clients and LLM agents on top of
+Appium Espresso Driver. [Ultron](https://github.com/open-tool/ultron) supplies operation execution,
+supported retries and lifecycle listeners over Espresso, Compose Test APIs and UI Automator.
+
+| Addition to Appium Espresso Driver | What it helps with |
+| --- | --- |
+| [Operation + snapshot responses](docs/guides/llm-views.md#observe-and-act) | Get an action/assertion result and the UI tree after it in one response, including execution failures. |
+| [Mixed View/Compose JSON snapshots](docs/guides/llm-views.md#snapshot-contract) | Observe native Views and embedded Compose semantics together without switching subdrivers to collect each tree. |
+| [Ultron timeouts and retries](docs/comparison.md#operation-execution) | Handle supported transient failures on Android within an operation's timeout, reducing client-side polling logic. |
+| [RecyclerView operations](docs/guides/llm-views.md#recyclerview-lists) | Find items, scroll, act on child controls and check adapter data through a dedicated API. |
+| [Explicit Compose operations](docs/guides/compose-operations.md) | Use Lazy scrolling, state/text checks, IME and semantics actions without changing the global `driver` setting. |
+| [Standalone MCP and Appium MCP plugin](packages/ultron-mcp/README.md) | Connect agents directly to instrumentation or use an existing Appium deployment. |
+
+Automatic snapshots must be enabled for Appium/HTTP operation responses; MCP enables them for its
+action/assertion tools. Standard W3C commands keep their existing return formats.
+Espresso synchronization, IdlingResource and basic Compose support are inherited from upstream.
+Instrumentation signing and dependency compatibility requirements still apply. See the
+[comparison and limitations](docs/comparison.md) for the scope of these additions.
+
+For example, after creating an Appium session, enable snapshots once and receive the result and
+updated tree from a View action:
+
+```javascript
+await driver.updateSettings({ultronSnapshotEnabled: true});
+const result = await driver.execute('mobile: ultronAct', {
+  matcher: {class: 'ViewMatchers', name: 'withText', args: ['Continue']},
+  action: 'click',
+  timeoutMs: 5000,
+});
+// Inspect result.operation.status and result.snapshot.status separately.
+// Use result.snapshot.roots to observe the UI, then assert the expected outcome.
+```
+
+## Install with Appium
 
 To install this fork with Appium 3:
 
@@ -19,39 +57,30 @@ The npm package is named `ultron-omni-driver`. For compatibility, the Appium dri
 Published packages contain Android sources, not locally built APKs. Appium builds instrumentation
 for the target application; standalone MCP users build and sign an APK as described in its guide.
 
-The following documentation is adapted from the upstream Espresso driver. Links to the Appium
-website describe upstream behavior; fork-specific functionality is documented in this repository.
-
-This is a grey-box Appium driver for automating native and hybrid applications on Android, using
-Android's Espresso framework.
-
-> [!IMPORTANT]
-> Since major version *5.0.0*, this driver is only compatible with Appium 3.
-
-
 ## Documentation
 
-You can access the documentation here: [**https://appium.github.io/appium-espresso-driver**](https://appium.github.io/appium-espresso-driver)
+- [Documentation home](docs/index.md), [overview and architecture](docs/overview.md) and [comparison with Appium Espresso Driver](docs/comparison.md)
+- [Getting started with Appium](docs/getting-started/index.md)
+- [View/Compose snapshots and View/RecyclerView operations](docs/guides/llm-views.md)
+- [Ultron Compose operations](docs/guides/compose-operations.md)
+- [MCP setup: standalone or Appium plugin](packages/ultron-mcp/README.md)
+- [Ultron framework documentation](https://open-tool.github.io/ultron/docs/) and [source](https://github.com/open-tool/ultron)
 
-The original README remains below, but will be removed in the near future. Please update your links
-to the documentation website.
+The reference below is adapted from the upstream Espresso driver. The
+[upstream documentation](https://appium.github.io/appium-espresso-driver) describes inherited
+Appium behavior; use this repository's documentation for fork-specific APIs and setup.
 
 ---
 
-Appium's Espresso Driver is a test automation server for Android that uses [Espresso](https://developer.android.com/training/testing/espresso/) as the underlying test technology. The Espresso Driver is a part of the Appium framework. The driver operates in scope of [W3C WebDriver protocol](https://www.w3.org/TR/webdriver/) with several custom extensions to cover operating-system specific scenarios.
+Ultron Omni Driver retains the Appium Espresso Driver's grey-box automation of native and hybrid
+Android applications through the [W3C WebDriver protocol](https://www.w3.org/TR/webdriver/), and
+adds the Ultron APIs described above.
 
 The Espresso package consists of two main parts:
 - The driver part (written in Node.js) ensures the communication between the Espresso server and Appium. Also includes several handlers that directly use ADB and/or other system tools without a need to talk to the server.
 - The server part (written in Kotlin with some parts of Java), which is running on the device under test and transforms REST API calls into low-level Espresso commands.
 
-See the [end-to-end architecture diagram](./docs/architecture.md).
-
-This fork also provides [mixed View/Compose JSON snapshots](./docs/guides/llm-views.md) and a
-separate [Ultron MCP server](./packages/ultron-mcp/README.md) for agent-driven test steps, with direct
-Android HTTP access without Appium and an optional Appium MCP plugin. Standalone MCP can
-[manage one Android device](./packages/ultron-mcp/README.md#standalone-managed-device-lifecycle-prebuilt-apk)
-from a prebuilt signed instrumentation APK: lazy installation/startup, a dynamic forwarded port,
-and explicit session cleanup.
+See the [end-to-end architecture diagram](./docs/overview.md#end-to-end-architecture).
 
 > [!IMPORTANT]
 > Since major version *5.0.0*, this driver is only compatible with Appium 3. Use the Git installation command above to install this fork.
@@ -83,7 +112,7 @@ If you have access to the source code of the application under test then it is
 possible to integrate Espresso server into your application and make it to a library.
 This approach allows to simplify the dependency conflicts resolution
 as well as to optimize the session startup performance.
-Read the corresponding [article](./docs/as-library.md) from the driver
+Read the corresponding [article](./docs/guides/usage-as-library.md) from the driver
 documentation for more details.
 
 
@@ -122,7 +151,7 @@ appium:printPageSourceOnFindFailure | Enforces the server to dump the actual XML
 
 Capability Name | Description
 --- | ---
-appium:systemPort | The number of the port the Espresso server is listening on. By default the first free port from 8300..8399 range is selected. It is recommended to set this value if you are running [parallel tests](docs/parallel-tests.md) on the same machine.
+appium:systemPort | The number of the port the Espresso server is listening on. By default the first free port from 8300..8399 range is selected. It is recommended to set this value if you are running [parallel tests](docs/guides/parallel-tests.md) on the same machine.
 appium:skipServerInstallation | Skip the Espresso Server component installation on the device under test and all the related checks if set to `true`. This could help to speed up the session startup if you know for sure the correct server version is installed on the device. In case the server is not installed or an incorrect version of it is installed then you may get an unexpected error later. Since driver version 3.3.0 the driver automatically verifies the compatibility with the server module on session startup by checking its `/status` response. An error is thrown if the returned server major version does not match to the driver's module major version or the target package name is different from the expected one. You may also skip the server version validation for a prebuilt server module by setting the [VERSION constant](./espresso-server/library/src/main/java/io/appium/espressoserver/lib/helpers/Version.kt) to a non-valid [semver](https://semver.org/) value. `false` by default
 appium:espressoServerLaunchTimeout | The maximum number of milliseconds to wait util Espresso server is listening on the device. `45000` ms by default
 appium:forceEspressoRebuild | Whether to always enforce Espresso server rebuild (`true`). By default Espresso caches the already built server apk and only rebuilds it when it is necessary, because rebuilding process needs extra time. `false` by default
@@ -134,11 +163,11 @@ appium:showGradleLog | Whether to include Gradle log to the regular server logs 
 Capability Name | Description
 --- | ---
 appium:app | Full path to the application to be tested (the app must be located on the same machine where the server is running). The `.apk` application extension is supported. Since driver version 2.1.0 `.aab` files are supported as well (they get converted to `.apk` format automatically if [bundletool.jar](https://github.com/google/bundletool/releases) could be found in your PATH). For older driver versions `.aab` files need to be [converted](https://stackoverflow.com/questions/53040047/generate-apk-file-from-aab-file-android-app-bundle) manually to `.apk` format using [bundletool](https://developer.android.com/studio/command-line/bundletool) first. Could also be an URL to a remote location. If neither of the `app` or `appPackage` capabilities are provided then the driver will fail to start a session. Also, if `app` capability is not provided it is expected that the app under test is already installed on the device under test and `noReset` is equal to `true`.
-appium:appPackage | Application package identifier to be started. If not provided then Espresso will try to detect it automatically from the package provided by the `app` capability. Read [How To Troubleshoot Activities Startup](docs/activity-startup.md) for more details
-appium:appActivity | Main application activity identifier. If not provided then Espresso will try to detect it automatically from the package provided by the `app` capability. Read [How To Troubleshoot Activities Startup](docs/activity-startup.md) for more details
-appium:appWaitActivity | Identifier of the first activity that the application invokes. If not provided then equals to `appium:appActivity`. Read [How To Troubleshoot Activities Startup](docs/activity-startup.md) for more details
-appium:appWaitPackage | Identifier of the first package that is invoked first. If not provided then equals to `appium:appPackage`. Read [How To Troubleshoot Activities Startup](docs/activity-startup.md) for more details
-appium:appWaitDuration | Maximum amount of milliseconds to wait until the application under test is started (e. g. an activity returns the control to the caller). `20000` ms by default. Read [How To Troubleshoot Activities Startup](docs/activity-startup.md) for more details
+appium:appPackage | Application package identifier to be started. If not provided then Espresso will try to detect it automatically from the package provided by the `app` capability. Read [How To Troubleshoot Activities Startup](docs/guides/activity-startup.md) for more details
+appium:appActivity | Main application activity identifier. If not provided then Espresso will try to detect it automatically from the package provided by the `app` capability. Read [How To Troubleshoot Activities Startup](docs/guides/activity-startup.md) for more details
+appium:appWaitActivity | Identifier of the first activity that the application invokes. If not provided then equals to `appium:appActivity`. Read [How To Troubleshoot Activities Startup](docs/guides/activity-startup.md) for more details
+appium:appWaitPackage | Identifier of the first package that is invoked first. If not provided then equals to `appium:appPackage`. Read [How To Troubleshoot Activities Startup](docs/guides/activity-startup.md) for more details
+appium:appWaitDuration | Maximum amount of milliseconds to wait until the application under test is started (e. g. an activity returns the control to the caller). `20000` ms by default. Read [How To Troubleshoot Activities Startup](docs/guides/activity-startup.md) for more details
 appium:intentOptions | The mapping of custom options for the intent that is going to be passed to the main app activity. Check [Intent Options](#intent-options) for more details.
 appium:activityOptions | The mapping of custom options for the main app activity that is going to be started. Check [Activity Options](#activity-options) for more details.
 appium:androidInstallTimeout | Maximum amount of milliseconds to wait until the application under test is installed. `90000` ms by default
@@ -206,10 +235,10 @@ appium:noSign | Set it to `true` in order to skip application signing. By defaul
 
 Capability Name | Description
 --- | ---
-appium:skipUnlock | Whether to skip the check for lock screen presence (`true`). By default Espresso driver tries to detect if the device's screen is locked before starting the test and to unlock that (which sometimes might be unstable). Note, that this operation takes some time, so it is recommended to set this capability to `false` and disable screen locking on devices under test. Read the [Unlock tutorial](./docs/unlock/main.md) for more details.
-appium:unlockType | Set one of the possible types of Android lock screens to unlock. Read the [Unlock tutorial](./docs/unlock/main.md) for more details.
-appium:unlockKey | Allows to set an unlock key. Read the [Unlock tutorial](./docs/unlock/main.md) for more details.
-appium:unlockSuccessTimeout | Maximum number of milliseconds to wait until the device is unlocked. `2000` ms by default. Read the [Unlock tutorial](./docs/unlock/main.md) for more details.
+appium:skipUnlock | Whether to skip the check for lock screen presence (`true`). By default Espresso driver tries to detect if the device's screen is locked before starting the test and to unlock that (which sometimes might be unstable). Note, that this operation takes some time, so it is recommended to set this capability to `false` and disable screen locking on devices under test. Read the [Unlock tutorial](./docs/guides/unlock.md) for more details.
+appium:unlockType | Set one of the possible types of Android lock screens to unlock. Read the [Unlock tutorial](./docs/guides/unlock.md) for more details.
+appium:unlockKey | Allows to set an unlock key. Read the [Unlock tutorial](./docs/guides/unlock.md) for more details.
+appium:unlockSuccessTimeout | Maximum number of milliseconds to wait until the device is unlocked. `2000` ms by default. Read the [Unlock tutorial](./docs/guides/unlock.md) for more details.
 
 ### Web Context
 
@@ -223,8 +252,8 @@ appium:chromedriverPort | The port number to use for Chromedriver communication.
 appium:chromedriverPorts | Array of possible port numbers to assign for Chromedriver communication. If none of the port in this array is free then an error is thrown.
 appium:chromedriverArgs | Array of chromedriver [command line arguments](http://www.assertselenium.com/java/list-of-chrome-driver-command-line-arguments/). Note, that not all command line arguments that are available for the desktop browser are also available for the mobile one.
 appium:chromedriverExecutable | Full path to the chromedriver executable on the server file system.
-appium:chromedriverExecutableDir | Full path to the folder where chromedriver executables are located. This folder is used then to store the downloaded chromedriver executables if automatic download is enabled. Read [Automatic Chromedriver Discovery article](docs/hybrid-mode.md#automatic-discovery-of-compatible-chromedriver) for more details.
-appium:chromedriverChromeMappingFile | Full path to the chromedrivers mapping file. This file is used to statically map webview/browser versions to the chromedriver versions that are capable of automating them. Read [Automatic Chromedriver Discovery article](docs/hybrid-mode.md#automatic-discovery-of-compatible-chromedriver) for more details.
+appium:chromedriverExecutableDir | Full path to the folder where chromedriver executables are located. This folder is used then to store the downloaded chromedriver executables if automatic download is enabled. Read [Automatic Chromedriver Discovery article](docs/guides/hybrid.md#automatic-discovery) for more details.
+appium:chromedriverChromeMappingFile | Full path to the chromedrivers mapping file. This file is used to statically map webview/browser versions to the chromedriver versions that are capable of automating them. Read [Automatic Chromedriver Discovery article](docs/guides/hybrid.md#automatic-discovery) for more details.
 appium:chromedriverUseSystemExecutable | Set it to `true` in order to enforce the usage of chromedriver, which gets downloaded by Appium automatically upon installation. This driver might not be compatible with the destination browser or a web view. `false` by default.
 appium:chromedriverDisableBuildCheck | Being set to `true` disables the compatibility validation between the current chromedriver and the destination browser/web view. Use it with care.
 appium:autoWebviewTimeout | Set the maximum number of milliseconds to wait until a web view is available if `autoWebview` capability is set to `true`. `2000` ms by default
@@ -278,7 +307,7 @@ The `swiper` argument is not supported in Compose mode. Available since driver v
 
 Calling other driver element-specific APIs not listed above would most likely throw an exception as Compose and Espresso elements are being stored in completely separated internal caches and must not be mixed.
 
-If session startup or Compose interactions fail, see [How To Troubleshoot Jetpack Compose Apps](docs/compose-troubleshooting.md).
+If session startup or Compose interactions fail, see [How To Troubleshoot Jetpack Compose Apps](docs/troubleshooting/compose.md).
 
 You could also check end-to-end tests for more examples on how to setup test capabilities and
 on the Compose usage in general:
@@ -447,7 +476,7 @@ accessibility id | This strategy is mapped to the native Espresso `withContentDe
 class name | This strategy is mapped to the native Espresso `withClassName` [matcher](https://developer.android.com/reference/androidx/test/espresso/matcher/ViewMatchers#withClassName(org.hamcrest.Matcher%3Cjava.lang.String%3E)) (exact match of element's class name). | `⭐⭐⭐⭐⭐` | 'android.view.View'
 text | This strategy is mapped to the native Espresso `withText` [matcher](https://developer.android.com/reference/androidx/test/espresso/matcher/ViewMatchers#withText(org.hamcrest.Matcher%3Cjava.lang.String%3E)) (exact match of element's text). | `⭐⭐⭐⭐⭐` | 'my text'
 `-android viewtag` or `tag name` | This strategy is mapped to the native Espresso `withTagValue` [matcher](https://developer.android.com/reference/androidx/test/espresso/matcher/ViewMatchers#withtagvalue) (exact match of element's tag value). | `⭐⭐⭐⭐⭐` | 'my tag'
--android datamatcher | This strategy allows to create Espresso [data interaction](https://developer.android.com/reference/android/support/test/espresso/DataInteraction) selectors which can quickly and reliably scroll to the necessary elements. Read [Espresso DataMatcher Selector](docs/espresso-datamatcher-selector.md) to know more on how to construct these locators. Also check the [Unlocking New Testing Capabilities with Espresso Driver by Daniel Graham](https://www.youtube.com/watch?v=gU9EEUV5n9U) presentation video from Appium Conf 2019. | `⭐⭐⭐⭐` | {"name": "hasEntry", "args": ["title", "WebView3"]}
+-android datamatcher | This strategy allows to create Espresso [data interaction](https://developer.android.com/reference/android/support/test/espresso/DataInteraction) selectors which can quickly and reliably scroll to the necessary elements. Read [Espresso DataMatcher Selector](docs/guides/datamatcher-selector.md) to know more on how to construct these locators. Also check the [Unlocking New Testing Capabilities with Espresso Driver by Daniel Graham](https://www.youtube.com/watch?v=gU9EEUV5n9U) presentation video from Appium Conf 2019. | `⭐⭐⭐⭐` | {"name": "hasEntry", "args": ["title", "WebView3"]}
 -android viewmatcher | This strategy allows constructing of Espresso [view matchers](https://developer.android.com/reference/androidx/test/espresso/matcher/ViewMatchers) based on the given JSON representation of them. The representation is expected to contain the following fields: `name`: _mandatory_ matcher function name; `args`: _optional_ matcher function arguments, each argument could also be a function; `class`: _optional_ full qualified class name of the corresponding matcher (if not provided then [org.hamcrest.Matchers](https://hamcrest.org/JavaHamcrest/javadoc/2.2/org/hamcrest/Matchers.html) one is used), `scope` (since Espresso driver 2.11.0): _optional_ JSON representation of a [RootMatchers](https://developer.android.com/reference/androidx/test/espresso/matcher/RootMatchers) method. Check [unit tests](https://github.com/appium/appium-espresso-driver/blob/master/espresso-server/app/src/test/java/io/appium/espressoserver/test/model/HamcrestMatcherTest.kt) for more examples. | `⭐⭐⭐⭐` | {"name": "withText", "args": [{"name": "containsString", "args": "getExternalStoragePublicDirectory", "class": "org.hamcrest.Matchers"}], "class": "androidx.test.espresso.matcher.ViewMatchers"}
 xpath | For elements lookup Xpath strategy the driver uses the same XML tree that is generated by page source API. Only Xpath 1.0 is supported. | `⭐⭐⭐` | By.xpath("//android.view.View[@text=\"Regular\" and @checkable=\"true\"]")
 
@@ -1864,7 +1893,7 @@ the `anotherMethod` will be called on the object returned by `someMethod`, which
 
 It is possible to execute tests in parallel using Espresso driver.
 Appium allows to do this on per-process (multiple server processes running on different ports managing single session)
-or per-request basis (single server process managing multiple sessions, more preferable, uses less resources and ensures better control over running sessions). Check [Parallel Android Tests](docs/parallel-tests.md) article for
+or per-request basis (single server process managing multiple sessions, more preferable, uses less resources and ensures better control over running sessions). Check [Parallel Android Tests](docs/guides/parallel-tests.md) article for
 more details.
 
 > [!NOTE]
@@ -1874,10 +1903,10 @@ more details.
 ## Troubleshooting
 
 * Run `appium driver run espresso diagnose-app --app /path/to/your/android-project` or `--app /path/to/debug.apk`. The script checks manifest permissions, obfuscation, AndroidX/Compose dependency alignment, and other static preconditions for precompile. Exit code is non-zero when the app is not ready for precompile.
-* If you test **Jetpack Compose** apps (or hybrid View + Compose UIs) and see server startup failures, `NoSuchMethodError` in `androidx.compose.*`, misleading `INTERNET` permission errors, `InitializationProvider` / `Resources$NotFoundException`, or locator issues in `compose` subdriver mode, read [How To Troubleshoot Jetpack Compose Apps](docs/compose-troubleshooting.md).
+* If you test **Jetpack Compose** apps (or hybrid View + Compose UIs) and see server startup failures, `NoSuchMethodError` in `androidx.compose.*`, misleading `INTERNET` permission errors, `InitializationProvider` / `Resources$NotFoundException`, or locator issues in `compose` subdriver mode, read [How To Troubleshoot Jetpack Compose Apps](docs/troubleshooting/compose.md).
 * If you observe Espresso server crash on startup and various exceptions about missing class/method in the logcat output then consider updating [appium:espressoBuildConfig](#espresso-build-config) capability with module versions that match your application under test. This might require some experimentation, as different apps have different module requirements. Check, for example, [issue #812](https://github.com/appium/appium-espresso-driver/issues/812). Another solution might be
 to [integrate](#consuming-espresso-server-as-library) Espresso Server with the application under test in form of a library.
-* If you experience issues with application activities being not found or not starting then consider checking [How To Troubleshoot Activities Startup](docs/activity-startup.md) article.
+* If you experience issues with application activities being not found or not starting then consider checking [How To Troubleshoot Activities Startup](docs/guides/activity-startup.md) article.
 * Espresso requires the debug APK and app-under-test APK (AUT) to have the same signature. It automatically signs the AUT with the `io.appium.espressoserver.test` signature. This may be problematic if you're using an outdated Android SDK tools and/or an outdated Java version.
 * If there are problems starting a session, set the capability `forceEspressoRebuild` to `true` and retry. This will force rebuilding of Espresso Server. If the following session startup is successful, set it back to `false`, so the session startup performance is back to normal.
 * If you experience session startup failures due to exceptions similar to `Resources$NotFoundException` then try to adjust your ProGuard rules:
