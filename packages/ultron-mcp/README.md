@@ -1,6 +1,11 @@
 # Ultron MCP
 
 Part of the independent [Ultron Omni Driver fork](https://github.com/dabrynskiy/ultron-omni-driver).
+It exposes [Ultron](https://open-tool.github.io/ultron/docs/) operations and the fork's mixed
+View/Compose snapshots to agents. See the [comparison with Appium Espresso Driver](../../docs/comparison.md)
+for the benefits, inherited capabilities and limitations, and the
+[architecture](../../docs/overview.md#end-to-end-architecture) for both connection paths.
+
 Snapshot password fields and sensitive Compose semantics are redacted as described in the
 [snapshot guide](../../docs/guides/llm-views.md). Use test data for ordinary app content, which is
 returned to the MCP client as displayed. Published packages do not include local instrumentation

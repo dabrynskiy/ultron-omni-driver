@@ -2,6 +2,13 @@
 title: Ultron Compose operations
 ---
 
+These commands expose a supported subset of [Ultron](https://open-tool.github.io/ultron/docs/)
+Compose operations over Appium and MCP. The framework's
+[LazyList documentation](https://open-tool.github.io/ultron/docs/compose/lazylist/) describes its
+Kotlin list API; use the remote actions below for this fork's supported scrolling and checks.
+See the [comparison with Appium Espresso Driver](../comparison.md) for the differences from
+the inherited Compose subdriver.
+
 `mobile: ultronComposeAct` and `mobile: ultronComposeAssert` execute Ultron Compose operations
 directly against semantics nodes. MCP exposes the same API as `ultron_compose_act` and
 `ultron_compose_assert`, in both standalone and Appium MCP modes. These commands require
