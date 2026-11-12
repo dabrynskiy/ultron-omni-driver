@@ -203,6 +203,10 @@ export class EspressoDriver
   mobileUltronAssert = ultronCmds.mobileUltronAssert;
   mobileUltronRecycler = ultronCmds.mobileUltronRecycler;
   mobileUltronBatch = ultronCmds.mobileUltronBatch;
+  mobileUltronAutomatorAct = ultronCmds.mobileUltronAutomatorAct;
+  mobileUltronAutomatorAssert = ultronCmds.mobileUltronAutomatorAssert;
+  mobileUltronWebAct = ultronCmds.mobileUltronWebAct;
+  mobileUltronWebAssert = ultronCmds.mobileUltronWebAssert;
   mobileUltronBack = ultronCmds.mobileUltronBack;
   mobileUltronHideKeyboard = ultronCmds.mobileUltronHideKeyboard;
   mobileUltronElement = ultronCmds.mobileUltronElement;

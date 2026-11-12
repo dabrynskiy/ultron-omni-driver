@@ -10,7 +10,7 @@ import io.appium.espressoserver.lib.helpers.ultron
 import io.appium.espressoserver.lib.llm.UltronOperationInfo
 import io.appium.espressoserver.lib.llm.UltronSnapshotResult
 import io.appium.espressoserver.lib.llm.UltronSnapshots
-import io.appium.espressoserver.lib.llm.ViewHierarchyDumper
+import io.appium.espressoserver.lib.llm.SnapshotCapture
 import io.appium.espressoserver.lib.llm.ViewSnapshot
 import io.appium.espressoserver.lib.model.AppiumParams
 import io.appium.espressoserver.lib.model.ScopedMatcher
@@ -22,6 +22,24 @@ class UltronSnapshotParams : AppiumParams() {
     val maxDepth: Int = 100
     val maxNodes: Int = 5000
     val useUnmergedTree: Boolean = true
+    val mode: String? = null
+
+    companion object {
+        fun validateJson(body: String) {
+            val root = com.google.gson.JsonParser.parseString(body)
+            if (!root.isJsonObject) throw InvalidArgumentException("Snapshot parameters must be an object")
+            for ((key, value) in root.asJsonObject.entrySet()) {
+                val valid = when (key) {
+                    "mode" -> value.isJsonPrimitive && value.asJsonPrimitive.isString && value.asString in setOf("ultron", "automator")
+                    "useUnmergedTree" -> value.isJsonPrimitive && value.asJsonPrimitive.isBoolean
+                    "maxDepth", "maxNodes" -> value.isJsonPrimitive && value.asJsonPrimitive.isNumber &&
+                        runCatching { value.asBigDecimal.intValueExact() }.isSuccess
+                    else -> false
+                }
+                if (!valid) throw InvalidArgumentException("Invalid snapshot parameter: $key")
+            }
+        }
+    }
 }
 
 class UltronOperationParams : AppiumParams() {
@@ -79,7 +97,8 @@ class UltronSnapshot : RequestHandler<UltronSnapshotParams, ViewSnapshot> {
         if (params.maxDepth !in 0..100 || params.maxNodes !in 1..10000) {
             throw InvalidArgumentException("maxDepth must be 0..100; maxNodes must be 1..10000")
         }
-        return ViewHierarchyDumper(params.maxDepth, params.maxNodes, useUnmergedTree = params.useUnmergedTree).capture()
+        return SnapshotCapture.capture(params.maxDepth, params.maxNodes, params.useUnmergedTree,
+            params.mode ?: SnapshotCapture.mode)
     }
 }
 

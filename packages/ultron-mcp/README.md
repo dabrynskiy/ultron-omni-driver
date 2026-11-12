@@ -1,8 +1,9 @@
 # Ultron MCP
 
 Part of the independent [Ultron Omni Driver fork](https://github.com/dabrynskiy/ultron-omni-driver).
-It exposes [Ultron](https://open-tool.github.io/ultron/docs/) operations and the fork's mixed
-View/Compose snapshots to agents. See the [comparison with Appium Espresso Driver](../../docs/comparison.md)
+It exposes [Ultron](https://open-tool.github.io/ultron/docs/) operations and unified JSON snapshots:
+Views/Compose by default, accessibility windows in `automator` mode, and automatic embedded WebView
+DOM in both modes. See the [comparison with Appium Espresso Driver](../../docs/comparison.md)
 for the benefits, inherited capabilities and limitations, and the
 [architecture](../../docs/overview.md#end-to-end-architecture) for both connection paths.
 
@@ -275,11 +276,13 @@ provide these driver extensions.
 
 | Tool | Purpose |
 | --- | --- |
-| `ultron_check_matcher` | Check snapshot cardinality for View matchers or Compose locators, with candidate details |
-| `ultron_snapshot` | JSON View/Compose tree; optional `maxDepth`, `maxNodes`, `useUnmergedTree` |
+| `ultron_check_matcher` | Check snapshot cardinality for Espresso, Compose, UIAutomator or DOM locators, with candidate details |
+| `ultron_snapshot` | One JSON tree: `mode: "ultron"` (default Views/Compose) or `"automator"` (accessibility windows); automatic in-process WebView DOM; optional `maxDepth`, `maxNodes`, `useUnmergedTree` |
 | `ultron_act` | Espresso View action by matcher; supports clicks, swipes, text, key events and keyboard close; returns operation + snapshot |
 | `ultron_assert` | Named Ultron checks or custom View conditions; returns operation + snapshot |
 | `ultron_compose_act` | Compose actions, Lazy scrolling, IME, semantics actions, selection and clipboard; returns operation + snapshot |
+| `ultron_automator_act` / `ultron_automator_assert` | Ultron UiAutomator actions/checks with accessibility diagnostics; version 2 replay |
+| `ultron_web_act` / `ultron_web_assert` | Ultron Web Atom actions/checks with WebView/frame locators and target DOM diagnostics; version 2 replay |
 | `ultron_compose_assert` | Compose states, text/descriptions, ranges, sizes and matcher assertions; returns operation + snapshot |
 | `ultron_recycler` | RecyclerView item search, scrolling, item/child actions, count and existence assertions; returns operation + snapshot |
 | `ultron_batch` | Execute matcher, RecyclerView, navigation and element operations sequentially; stop at the first failure and capture only its snapshot |
@@ -291,7 +294,18 @@ provide these driver extensions.
 | `ultron_recording_finish` | Export a passed recording, or retain a failed draft |
 | `ultron_recording_discard` | Stop recording and retain artifacts marked discarded |
 | `ultron_last_result` | Latest saved Espresso or Compose result or null; not a command journal |
-| `ultron_settings` | Read settings; optionally set `snapshotEnabled` or `driver: "espresso" / "compose"` |
+| `ultron_settings` | Read settings; optionally set `snapshotEnabled`, `snapshotMode: "ultron" / "automator"` or `driver: "espresso" / "compose"` |
+
+`ultron_snapshot` accepts `mode: "ultron" | "automator"` for one observation. Omit it to use the
+session default, initially `ultron`; change that default with `ultron_settings` and
+`snapshotMode: "automator"`. The setting also controls ordinary post-operation snapshots and batch
+failure snapshots with `schemaVersion: 1` (the default). Individual Automator/Web commands and
+batch failures with `schemaVersion: 2` use diagnostics selected by their executor without changing
+the session setting. The setting resets when the session ends and does not change action executors.
+Both modes append available DOM for WebViews in the instrumented app; there is no DOM override flag
+or external browser DOM support. Nodes identify their source, and missing DOM yields partial-result
+diagnostics. See the
+[snapshot contract](../../docs/guides/llm-views.md#snapshot-contract) for fields and limits.
 
 In Appium MCP mode, screenshot, gestures and session management remain the host's
 built-in tools. Use the Ultron Back/keyboard/element tools when those actions must be recorded. The plugin names do not override built-in Appium MCP tools.
@@ -302,8 +316,16 @@ set MCP `isError: true` and retain the full operation and snapshot. Partial obse
 usable; unavailable explicit snapshots are MCP errors. `structuredContent` and JSON text contain
 the same response (null last-result is text only).
 
-`ultron_batch` accepts `steps: [{id, command, params}]` and optional `schemaVersion: 1`.
-Commands are `ultronAct`, `ultronAssert`, `ultronComposeAct`, `ultronComposeAssert` and
+`ultron_batch` accepts `steps: [{id, command, params}]` and optional `schemaVersion: 1 | 2` (default `1`).
+Version 2 adds `ultronAutomatorAct`, `ultronAutomatorAssert`, `ultronWebAct`, and `ultronWebAssert`.
+The same operations are exposed as individual tools `ultron_automator_act`,
+`ultron_automator_assert`, `ultron_web_act`, and `ultron_web_assert`. Automator returns accessibility
+diagnostics; Web returns the target WebView DOM and native context. Version 2 chooses failure
+diagnostics from the failed step; version 1 keeps the session observation mode. Recordings promote
+to version 2 when these commands or an explicit version 2 batch are recorded. See the
+[mixed batch contract](../../docs/guides/batch-operations.md#mixed-espresso-automator-and-web-scenarios)
+for selectors, frames, assertions, timeouts, and examples.
+Version 1 commands are `ultronAct`, `ultronAssert`, `ultronComposeAct`, `ultronComposeAssert` and
 `ultronRecycler`, `ultronBack`, `ultronHideKeyboard` and `ultronElement`; params use the raw driver JSON API. Element steps require an explicit backend. Espresso batch assertions use
 `condition`/`exists`, rather than MCP named assertion aliases. The tool does not change snapshot
 settings: successful/skipped steps have no snapshot, and only the first failed step receives one,
@@ -502,9 +524,12 @@ Named checks add no outer retries. Restart the MCP process to load the new schem
 
 ## Check a matcher before acting
 
-`ultron_check_matcher` obtains a fresh unmerged dump (100 depth, up to 10000 total nodes), or
+`ultron_check_matcher` obtains a fresh dump (100 depth, up to 10000 total nodes), or
 accepts an optional saved `snapshot` and works offline without a session. It evaluates the observed
-tree, including hidden nodes; Views and semantics representations are counted separately.
+tree, including hidden nodes; Views, semantics, accessibility and DOM representations are counted
+separately. Fresh `backend: "automator"` checks request `mode: "automator"`; other backends request
+`mode: "ultron"` with unmerged Compose semantics, regardless of the session's observation setting.
+DOM checks also accept saved accessibility snapshots containing DOM.
 
 View example:
 
@@ -520,6 +545,74 @@ Compose example:
 ```json
 {"backend":"compose","using":"-android viewtag","value":"submit_button"}
 ```
+
+UIAutomator examples (exact accessibility fields, not Espresso View properties):
+
+```json
+{"backend":"automator","using":"text","value":"Allow","scope":{"windowId":7}}
+```
+
+```json
+{"backend":"automator","using":"-android uiautomator","value":"new UiSelector().resourceId(\"com.example:id/submit\").enabled(true)"}
+```
+
+Supported accessibility locators: `id` (literal full resource ID), exact `text`, `accessibility id`,
+and exact `class name`. `-android uiautomator` accepts a single `UiSelector()` chain with exact string
+predicates `text`, `description`, `resourceId`, `className`, `packageName`, and boolean predicates
+`enabled`, `focused`, `focusable`, `clickable`, `longClickable`, `selected`, `checkable`, `checked`,
+`scrollable`. Strings use JSON escaping. Repeated predicates, regex/substring factories, positional
+selectors, nested selectors and arbitrary Java are `unsupported`; supplied code is never executed.
+All accessibility windows are counted unless `scope.windowId` selects one. UIAutomator locators
+require an accessibility snapshot; Espresso/Compose matchers still reject that snapshot.
+
+DOM example:
+
+```json
+{"backend":"dom","using":"css selector","value":"button[aria-label=\"Save\"]","scope":{"webview":"/roots/0/children/2","context":[]}}
+```
+
+`scope.webview` is the WebView host's JSON path in this snapshot. Omit it to count matches across
+WebViews. `scope.windowId` optionally narrows the native window when its ID is available.
+DOM `scope.context` defaults to `[]`, meaning top documents only. To check inside a frame or open
+shadow root, copy the target node's complete `context` array, e.g.
+`[{"type":"frame","selector":"html > body:nth-of-type(1) > iframe:nth-of-type(1)"}]`.
+CSS relationships never cross frame/shadow boundaries. Matches include `webview`, `context`,
+`selector`, `tagName` and saved `attributes`, so duplicate selectors in separate documents remain
+distinguishable. WebView paths and context selectors describe the snapshot, not durable handles.
+
+DOM supports `id` and a bounded `css selector` grammar: tag names, `*`, escaped `#id`, saved attribute
+presence/equality (`id`, `name`, `type`, `role`, `aria-label`, `placeholder`), child `>` and descendant
+combinators, and positive integer `:nth-of-type(n)`, including paths emitted by the collector.
+Class selectors, unsaved attributes, selector lists, other combinators/pseudo-classes and XPath are
+`unsupported`. The collector records namespaces and document mode for CSS tag/ID case matching;
+older dumps with unknown metadata, or HTML type comparisons requiring additional case rules,
+produce `indeterminate` when case changes could affect a match. Redacted,
+missing or potentially truncated matching values cannot prove a match or its absence.
+Counts describe the collected UI DOM; omitted script/style/template content and closed shadow
+trees are outside this observation.
+
+For actions and assertions, use `ultron_act`/`ultron_assert` for Espresso,
+`ultron_compose_act`/`ultron_compose_assert` for Compose,
+`ultron_automator_act`/`ultron_automator_assert` for UIAutomator, and
+`ultron_web_act`/`ultron_web_assert` for Web Atoms. The `ultron_element` tool accepts
+`backend: "espresso" | "compose"`.
+
+To verify against a real Android WebView and accessibility tree, build and install the library test
+APK, then run the opt-in fixture on an explicitly selected device:
+
+```sh
+cd espresso-server
+./gradlew :library:assembleComposeOnDebugAndroidTest
+cd ..
+adb -s emulator-5556 install -r -t espresso-server/library/build/outputs/apk/androidTest/composeOn/debug/library-composeOn-debug-androidTest.apk
+npm --prefix packages/ultron-mcp run test:locators:android -- --serial emulator-5556 --output /private/tmp/ultron-locator-device
+```
+
+The runner compares MCP counts with actual `UiDevice`/`querySelectorAll` counts, verifies frame/shadow
+contexts, real truncated dumps and redaction, and saves snapshots, reports and the instrumentation
+log. It starts a dedicated test activity/session and removes its ADB forwarding and fixture on exit.
+It requires no Appium server. The Android fixture is skipped in normal test runs unless explicitly
+enabled by this runner.
 
 The result contains `status`, `observedCount`, `exact`, `snapshotId`, `capturedAtMs`, `reasons`,
 and up to 20 matching nodes (`limit` can be 1..100). Candidates retain their dump path, window,
@@ -569,7 +662,7 @@ This is opt-in (default false): blocking on zero current matches would bypass Ul
 waiting for a future element. Assertions retain their waiting/absence semantics.
 
 The UI can change between checking and execution. `runtimeVerificationRequired: true` is always
-present; live Espresso/Compose resolution remains authoritative. Dump checks do not reserve a
+present; live executor resolution remains authoritative. Dump checks do not reserve a
 node or guarantee that a later mutation still targets the same screen.
 Lazy-list items that have not been materialized are absent from the observed tree; the checker
 does not scroll, expand adapter data or predict elements that may appear later.

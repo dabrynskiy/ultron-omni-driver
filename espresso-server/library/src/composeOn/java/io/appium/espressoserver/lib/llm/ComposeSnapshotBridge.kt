@@ -29,7 +29,7 @@ internal object ComposeSnapshotBridge {
         private val inheritedSensitive: Boolean = false,
     ) : SnapshotNode {
         override fun read(onError: (String, Throwable) -> Unit): Map<String, Any?> {
-            val result = linkedMapOf<String, Any?>("type" to "SemanticsNode", "node_id" to node.id)
+            val result = linkedMapOf<String, Any?>("type" to "SemanticsNode", "source" to "compose", "node_id" to node.id)
             fun field(name: String, get: () -> Any?) {
                 try { result[name] = get() } catch (error: Exception) { onError(name, error) }
             }

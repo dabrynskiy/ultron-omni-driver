@@ -69,6 +69,7 @@ internal fun UltronUiObject2.executeForAppium(
 internal fun executeWebForAppium(
     name: String,
     type: UltronOperationType,
+    timeoutMs: Long = UltronConfig.Espresso.ACTION_TIMEOUT,
     action: () -> WebInteraction<*>,
 ): WebInteraction<*> {
     lateinit var value: WebInteraction<*>
@@ -87,7 +88,7 @@ internal fun executeWebForAppium(
         name = name,
         description = name,
         type = type,
-        timeoutMs = UltronConfig.Espresso.ACTION_TIMEOUT,
+        timeoutMs = timeoutMs,
         resultHandler = ::handleUltronResult,
     )
     return value

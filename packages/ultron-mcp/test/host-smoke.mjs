@@ -99,7 +99,7 @@ transport.stderr?.on('data', (chunk) => {
 try {
   await client.connect(transport);
   const {tools} = await client.listTools();
-  assert.equal(tools.filter((tool) => tool.name.startsWith('ultron_')).length, 17);
+  assert.equal(tools.filter((tool) => tool.name.startsWith('ultron_')).length, 21);
   const missing = await client.callTool({name: 'ultron_snapshot', arguments: {sessionId: 'missing'}});
   assert.equal(missing.isError, true);
   const attach = await client.callTool({

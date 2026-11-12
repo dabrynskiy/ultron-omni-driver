@@ -7,7 +7,7 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 
-import {checkSnapshotMatcher as check} from '../snapshot-match.mjs';
+import {checkSnapshotMatcher as check, freshMatcherCheck} from '../snapshot-match.mjs';
 
 const property = (name, value) => ({class: 'LlmViewMatchers', name: 'propertyEquals', args: [name, value]});
 const text = (value) => ({class: 'ViewMatchers', name: 'withText', args: [value]});
@@ -34,6 +34,27 @@ const dump = (roots) => ({
   roots,
 });
 const snapshot = (...children) => dump([root(children)]);
+
+test('DOM subtrees do not become Espresso targets and accessibility trees cannot prove native uniqueness', () => {
+  const ui = snapshot(view({text: 'Save'}), {type: 'DomNode', source: 'web', text: 'Save'});
+  assert.equal(check({snapshot: ui, matcher: text('Save')}).status, 'unique');
+  assert.equal(
+    check({snapshot: snapshot(view({source: 'espresso'})), matcher: property('source', 'espresso')}).status,
+    'unique',
+  );
+  assert.equal(check({snapshot: {...ui, backend: 'automator'}, matcher: text('Save')}).status, 'unsupported');
+});
+
+test('fresh matcher checks explicitly request Ultron regardless of the session observation mode', async () => {
+  const driver = {
+    executeScript: async (command, [args]) => {
+      assert.equal(command, 'mobile: ultronSnapshot');
+      assert.equal(args.mode, 'ultron');
+      return snapshot(view({text: 'Save'}));
+    },
+  };
+  assert.equal((await freshMatcherCheck(driver, {matcher: text('Save')})).preflight.status, 'unique');
+});
 const node = (props) => ({type: 'SemanticsNode', node_id: 7, config: {}, ...props});
 const compose = (children) =>
   view({

@@ -23,8 +23,9 @@ details.
 | -- | -- |
 | `boolean` | `false` |
 
-Enables automatic mixed View/Compose hierarchy snapshots after Espresso Ultron operations
-(Compose semantics are available in the `composeOn` flavor). Set it at runtime:
+Enables automatic snapshots after supported Ultron operations. Snapshot selection follows the
+rules under [`ultronSnapshotMode`](#ultronsnapshotmode); Compose semantics are available in the
+`composeOn` flavor. Set it at runtime:
 
 ```javascript
 await driver.updateSettings({ultronSnapshotEnabled: true});
@@ -41,3 +42,29 @@ When disabled, ordinary operations do not collect snapshots. `mobile: ultronAct`
 status is `disabled`; they do not enable the listener or collect a fallback dump. Explicit
 `mobile: ultronSnapshot` remains available regardless of this setting. See the
 [LLM View guide](../guides/llm-views.md) for the response contract.
+
+## `ultronSnapshotMode`
+
+| Type | Default |
+| -- | -- |
+| `string` | `ultron` |
+
+Selects the observation provider: `ultron` reads Views and Compose semantics; `automator` reads
+accessibility windows, including system UI. Both automatically add available DOM for in-process
+WebViews. There is no DOM override option. This setting controls explicit snapshots without a
+per-call `mode` override, ordinary post-operation snapshots, and batch failure snapshots with
+`schemaVersion: 1` (the default). Individual `ultronAutomatorAct`/`ultronAutomatorAssert` and
+`ultronWebAct`/`ultronWebAssert` commands, and batch failures with `schemaVersion: 2`, use diagnostics
+selected by their executor without changing the session setting. See the
+[batch guide](../guides/batch-operations.md#mixed-espresso-automator-and-web-scenarios) for those
+diagnostics. Snapshot mode does not change action executors or locator semantics.
+
+```javascript
+await driver.updateSettings({ultronSnapshotMode: 'automator'});
+// Override only this observation:
+await driver.execute('mobile: ultronSnapshot', {mode: 'ultron'});
+```
+
+The mode resets to `ultron` at server startup and when a session is created or deleted. Invalid
+values and failed device updates propagate to the client. In MCP, use `ultron_settings` with
+`snapshotMode: "ultron" | "automator"`. See the [snapshot contract](../guides/llm-views.md#snapshot-contract).

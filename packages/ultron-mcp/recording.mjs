@@ -2,6 +2,8 @@ import {randomUUID} from 'node:crypto';
 import {appendFile, mkdir, rename, writeFile} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 
+import {mixedCommands} from './mixed.mjs';
+
 /** One explicitly delimited recording, pinned to one driver and Android session. */
 export class ScenarioRecorder {
   #active;
@@ -42,6 +44,7 @@ export class ScenarioRecorder {
       directory,
       startedAt: new Date().toISOString(),
       state: 'recording',
+      schemaVersion: 1,
       events: [],
       persistenceError: null,
     };
@@ -108,7 +111,7 @@ export class ScenarioRecorder {
       startedAt: a.startedAt,
       verification: 'not_replayed',
       events: a.events,
-      scenario: {schemaVersion: 1, steps: this.#steps(a)},
+      scenario: {schemaVersion: a.schemaVersion, steps: this.#steps(a)},
       issues: this.#issues(a),
     };
     const temporary = join(a.directory, `draft-${randomUUID()}.tmp`);
@@ -116,7 +119,7 @@ export class ScenarioRecorder {
     await rename(temporary, join(a.directory, 'draft.json'));
   }
 
-  async begin(driver, steps) {
+  async begin(driver, steps, schemaVersion = 1) {
     const a = this.#active;
     if (!a) {
       return null;
@@ -130,6 +133,11 @@ export class ScenarioRecorder {
     if (this.#steps(a).length + steps.length > 100) {
       throw new Error('Recording exceeds the batch limit of 100 steps. Finish this recording before continuing.');
     }
+    a.schemaVersion = Math.max(
+      a.schemaVersion,
+      schemaVersion,
+      steps.some(({command}) => mixedCommands.includes(command)) ? 2 : 1,
+    );
     const event = {id: randomUUID(), steps: structuredClone(steps)};
     a.events.push(event);
     try {
@@ -200,7 +208,10 @@ export class ScenarioRecorder {
     if (outcome === 'passed') {
       scenarioPath = join(a.directory, 'scenario.json');
       const temporary = join(a.directory, `scenario-${randomUUID()}.tmp`);
-      await writeFile(temporary, JSON.stringify({schemaVersion: 1, steps}, null, 2) + '\n', {mode: 0o600, flag: 'wx'});
+      await writeFile(temporary, JSON.stringify({schemaVersion: a.schemaVersion, steps}, null, 2) + '\n', {
+        mode: 0o600,
+        flag: 'wx',
+      });
       await rename(temporary, scenarioPath);
     }
     this.#last = {
@@ -214,7 +225,7 @@ export class ScenarioRecorder {
       verification: 'not_replayed',
     };
     this.#active = undefined;
-    return {...this.#last, ...(outcome === 'passed' ? {scenario: {schemaVersion: 1, steps}} : {})};
+    return {...this.#last, ...(outcome === 'passed' ? {scenario: {schemaVersion: a.schemaVersion, steps}} : {})};
   }
 
   async discard() {

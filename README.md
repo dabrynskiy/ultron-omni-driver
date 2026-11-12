@@ -44,7 +44,9 @@ The agent does not need to reconstruct a test from conversation history.
 
 The same JSON also runs through Appium's `mobile: ultronBatch` or the direct Android HTTP API.
 Replay executes the stored steps on Android without an agent choosing each action again. On a
-step failure, execution stops and returns the failed step's mixed View/Compose snapshot.
+step failure, execution stops and returns the failed step's snapshot. With `schemaVersion: 1`,
+the snapshot uses the session-selected mode; with `schemaVersion: 2`, it uses diagnostics selected
+by the failed step's executor.
 
 Recording is available in both standalone MCP and the Appium MCP plugin. It captures commands
 sent through these interfaces; exporting a scenario does not automatically verify its replay.
@@ -112,8 +114,9 @@ const result = await driver.execute("mobile: ultronAct", {
   Standalone managed mode expects the target app to be installed; published packages contain sources,
   so build and sign an instrumentation APK for your app first. JDK 17+ is required for building it.
 - Mixed snapshots and explicit Compose operations require a Compose-enabled server (`composeOn`).
-  Snapshots describe the target app's Views and Compose semantics; WebView DOM and other apps'
-  accessibility trees are outside this snapshot API. Hybrid/WebView automation uses the Appium path.
+  `ultron_snapshot` defaults to Views and Compose (`mode: "ultron"`); `mode: "automator"` returns
+  accessibility windows, including system dialogs. Both include DOM for accessible WebViews inside
+  the target app. External browser DOM is outside this API. See the [snapshot contract](docs/guides/llm-views.md).
 
 [Full setup requirements](docs/getting-started/index.md) ·
 [Capabilities and limitations](docs/comparison.md)

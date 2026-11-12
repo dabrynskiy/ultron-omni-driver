@@ -144,7 +144,7 @@ test(
     try {
       await client.connect(transport);
       const listed = (await client.listTools()).tools;
-      assert.equal(listed.length, 19);
+      assert.equal(listed.length, 23);
       assert.ok(
         listed.find((tool) => tool.name === 'ultron_assert').inputSchema.properties.assertion.enum.includes('hasText'),
       );
@@ -168,9 +168,12 @@ test(
         autoLaunch: true,
       });
       assert.equal((await call('ultron_session', {action: 'attach', sessionId: 'direct-session'})).isError, false);
-      const observed = await call('ultron_snapshot', {useUnmergedTree: false});
+      const observed = await call('ultron_snapshot', {useUnmergedTree: false, mode: 'automator'});
       assert.deepEqual(observed.structuredContent, snapshot);
       assert.equal(requests.find((r) => r.path.endsWith('/ultron_snapshot')).body.useUnmergedTree, false);
+      assert.equal(requests.find((r) => r.path.endsWith('/ultron_snapshot')).body.mode, 'automator');
+      assert.equal((await call('ultron_settings', {snapshotMode: 'automator'})).isError, false);
+      assert.equal(settings.ultronSnapshotMode, 'automator');
       const checked = await call('ultron_check_matcher', {backend: 'espresso', using: 'text', value: 'Save'});
       assert.equal(checked.structuredContent.status, 'unique');
       const matcher = {class: 'ViewMatchers', name: 'withText', args: ['Save']};

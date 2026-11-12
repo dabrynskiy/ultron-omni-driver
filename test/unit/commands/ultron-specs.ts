@@ -41,6 +41,60 @@ describe('Ultron LLM execute commands', function () {
     ]);
   });
 
+  it('routes mixed single commands with all optional parameters and version 2 batches', async function () {
+    const examples = [
+      [
+        'ultronAutomatorAct',
+        'ultron_automator_act',
+        {strategy: 'text', locator: 'Go', action: 'replaceText', text: '', packageName: 'app', index: 0, timeoutMs: 0},
+      ],
+      [
+        'ultronAutomatorAssert',
+        'ultron_automator_assert',
+        {
+          strategy: 'text',
+          locator: 'Go',
+          assertion: 'enabled',
+          expected: false,
+          packageName: 'app',
+          index: 0,
+          timeoutMs: 0,
+        },
+      ],
+      [
+        'ultronWebAct',
+        'ultron_web_act',
+        {
+          webViewMatcher: matcher,
+          locator: {using: 'ID', value: 'input'},
+          action: 'typeText',
+          text: '',
+          frames: [{index: 0}],
+          timeoutMs: 0,
+        },
+      ],
+      [
+        'ultronWebAssert',
+        'ultron_web_assert',
+        {
+          webViewMatcher: matcher,
+          locator: {using: 'ID', value: 'status'},
+          assertion: 'textEquals',
+          text: '',
+          frames: [{idOrName: 'inner'}],
+          timeoutMs: 0,
+        },
+      ],
+    ] as const;
+    for (const [name, route, params] of examples) {
+      await (driver as any).execute(`mobile: ${name}`, [params]);
+      assert.deepEqual(command.lastCall.args, [`/appium/execute_mobile/${route}`, 'POST', params]);
+    }
+    const steps = examples.map(([name, , params], i) => ({id: String(i), command: name, params}));
+    await (driver as any).execute('mobile: ultronBatch', [{schemaVersion: 2, steps}]);
+    assert.deepEqual(command.lastCall.args, ['/appium/execute_mobile/ultron_batch', 'POST', {schemaVersion: 2, steps}]);
+  });
+
   it('forwards positional clicks and action options through the execute method map', async function () {
     await (driver as any).execute('mobile: ultronAct', [
       {
@@ -95,6 +149,26 @@ describe('Ultron LLM execute commands', function () {
     command.resolves(null);
     assert.equal(await (driver as any).execute('mobile: ultronLastResult', []), null);
     assert.deepEqual(command.secondCall.args, ['/appium/execute_mobile/ultron_last_result', 'GET']);
+  });
+
+  it('forwards snapshot mode without changing the default request and validates session settings', async function () {
+    await (driver as any).execute('mobile: ultronSnapshot', [{mode: 'automator', maxNodes: 1}]);
+    assert.deepEqual(command.firstCall.args, [
+      '/appium/execute_mobile/ultron_snapshot',
+      'POST',
+      {mode: 'automator', maxNodes: 1},
+    ]);
+    command.resetHistory();
+    await (driver as any).execute('mobile: ultronSnapshot', [{}]);
+    assert.deepEqual(command.firstCall.args, ['/appium/execute_mobile/ultron_snapshot', 'POST', {}]);
+    command.resetHistory();
+    await assert.rejects(driver.updateSettings({ultronSnapshotMode: 'dom'}));
+    assert.equal(command.called, false);
+    await driver.updateSettings({ultronSnapshotMode: 'automator'});
+    assert.equal(driver.settings.getSettings().ultronSnapshotMode, 'automator');
+    command.rejects(new Error('device disconnected'));
+    await assert.rejects(driver.updateSettings({ultronSnapshotMode: 'ultron'}), /device disconnected/);
+    assert.equal(driver.settings.getSettings().ultronSnapshotMode, 'automator');
   });
 
   it('routes RecyclerView targets and preserves zero positions, counts and empty text', async function () {

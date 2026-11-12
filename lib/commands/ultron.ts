@@ -10,7 +10,9 @@ export interface UltronMatcher {
 
 export interface UltronSnapshotResult {
   snapshotId: string;
-  backend: 'espresso';
+  backend: 'espresso' | 'automator';
+  mode?: 'ultron' | 'automator';
+  context?: Record<string, unknown> | null;
   schemaVersion: number;
   status: 'captured' | 'partial' | 'unavailable' | 'disabled';
   roots: Record<string, unknown>[];
@@ -28,7 +30,7 @@ export interface UltronOperationResult {
     type: string;
     durationMs: number;
     error: string | null;
-    backend?: 'espresso' | 'compose';
+    backend?: 'espresso' | 'compose' | 'automator' | 'web';
   };
   snapshot: UltronSnapshotResult;
   value?: unknown;
@@ -43,7 +45,11 @@ export type UltronBatchCommand =
   | 'ultronRecycler'
   | 'ultronBack'
   | 'ultronHideKeyboard'
-  | 'ultronElement';
+  | 'ultronElement'
+  | 'ultronAutomatorAct'
+  | 'ultronAutomatorAssert'
+  | 'ultronWebAct'
+  | 'ultronWebAssert';
 
 export interface UltronBatchStep {
   id: string;
@@ -53,7 +59,7 @@ export interface UltronBatchStep {
 }
 
 export interface UltronBatchResult {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   status: 'success' | 'failure';
   failedStepId: string | null;
   durationMs: number;
@@ -120,11 +126,12 @@ export async function mobileUltronSnapshot(
   maxDepth?: number,
   maxNodes?: number,
   useUnmergedTree?: boolean,
+  mode?: 'ultron' | 'automator',
 ): Promise<UltronSnapshotResult> {
   return (await this.espresso.jwproxy.command('/appium/execute_mobile/ultron_snapshot', 'POST', {
-    maxDepth,
-    maxNodes,
-    useUnmergedTree,
+    ...Object.fromEntries(
+      Object.entries({maxDepth, maxNodes, useUnmergedTree, mode}).filter(([, value]) => value !== undefined),
+    ),
   })) as UltronSnapshotResult;
 }
 
@@ -260,4 +267,87 @@ export async function mobileUltronComposeAssert(
 export interface UltronComposeMatcher {
   name: string;
   args?: unknown[];
+}
+
+export async function mobileUltronAutomatorAct(
+  this: EspressoDriver,
+  strategy: string,
+  locator: string,
+  action: string,
+  text?: string,
+  packageName?: string,
+  index?: number,
+  timeoutMs?: number,
+): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_automator_act',
+    'POST',
+    Object.fromEntries(
+      Object.entries({strategy, locator, action, text, packageName, index, timeoutMs}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  )) as UltronOperationResult;
+}
+
+export async function mobileUltronAutomatorAssert(
+  this: EspressoDriver,
+  strategy: string,
+  locator: string,
+  assertion?: string,
+  text?: string,
+  expected?: boolean,
+  packageName?: string,
+  index?: number,
+  timeoutMs?: number,
+): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_automator_assert',
+    'POST',
+    Object.fromEntries(
+      Object.entries({strategy, locator, assertion, text, expected, packageName, index, timeoutMs}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  )) as UltronOperationResult;
+}
+
+export async function mobileUltronWebAct(
+  this: EspressoDriver,
+  webViewMatcher: UltronMatcher,
+  locator: Record<string, string>,
+  action: string,
+  text?: string,
+  frames?: ({index: number} | {idOrName: string})[],
+  timeoutMs?: number,
+): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_web_act',
+    'POST',
+    Object.fromEntries(
+      Object.entries({webViewMatcher, locator, action, text, frames, timeoutMs}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  )) as UltronOperationResult;
+}
+
+export async function mobileUltronWebAssert(
+  this: EspressoDriver,
+  webViewMatcher: UltronMatcher,
+  locator: Record<string, string>,
+  assertion?: string,
+  text?: string,
+  frames?: ({index: number} | {idOrName: string})[],
+  timeoutMs?: number,
+): Promise<UltronOperationResult> {
+  return (await this.espresso.jwproxy.command(
+    '/appium/execute_mobile/ultron_web_assert',
+    'POST',
+    Object.fromEntries(
+      Object.entries({webViewMatcher, locator, assertion, text, frames, timeoutMs}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  )) as UltronOperationResult;
 }

@@ -1,5 +1,5 @@
 // A deliberately bounded evaluator of dump data, not a replacement for Android's live matchers.
-const UNKNOWN = Symbol('unknown');
+import {UNKNOWN, Unsupported, sameContext, snapshotLocator} from './snapshot-locators.mjs';
 const MISSING = Symbol('missing');
 const and = (values) => (values.includes(false) ? false : values.includes(UNKNOWN) ? UNKNOWN : true);
 const or = (values) => (values.includes(true) ? true : values.includes(UNKNOWN) ? UNKNOWN : false);
@@ -7,9 +7,8 @@ const not = (value) => (value === UNKNOWN ? UNKNOWN : !value);
 const scalar = (value) => value === null || ['string', 'boolean', 'number'].includes(typeof value);
 const unsafe = (value) =>
   typeof value === 'number' && (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)));
-class Unsupported extends Error {}
 const viewProperties = new Set(
-  'type className viewId resourceId contentDescription visibility effective_visibility displayed alpha enabled focused focusable has_focusable clickable is_selected layoutParams layout_params_class tag tag_type tag_is_stringified bounds bounds.l bounds.t bounds.r bounds.b visible_bounds visible_bounds.l visible_bounds.t visible_bounds.r visible_bounds.b width height child_index child_count text transformed_text error_text hint input_type ime_target has_links is_checked scrollable scroll_x scroll_y'.split(
+  'type source className viewId resourceId contentDescription visibility effective_visibility displayed alpha enabled focused focusable has_focusable clickable is_selected layoutParams layout_params_class tag tag_type tag_is_stringified bounds bounds.l bounds.t bounds.r bounds.b visible_bounds visible_bounds.l visible_bounds.t visible_bounds.r visible_bounds.b width height child_index child_count text transformed_text error_text hint input_type ime_target has_links is_checked scrollable scroll_x scroll_y'.split(
     ' ',
   ),
 );
@@ -307,7 +306,7 @@ function selector(backend, using, value) {
   );
 }
 
-export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, using, value, limit = 20}) {
+export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, using, value, scope, limit = 20}) {
   const report = {
     backend,
     basis: 'snapshot',
@@ -323,8 +322,44 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
   };
   const reasons = new Set();
   try {
-    if (!['espresso', 'compose'].includes(backend)) {
-      throw new Unsupported('backend must be espresso or compose');
+    const accessibility = snapshot?.backend === 'automator' || snapshot?.mode === 'automator';
+    const dumpLocator = ['automator', 'dom'].includes(backend);
+    if (accessibility && !dumpLocator) {
+      throw new Unsupported('Accessibility snapshots cannot verify Espresso/Compose matchers; request mode=ultron.');
+    }
+    if (!['espresso', 'compose', 'automator', 'dom'].includes(backend)) {
+      throw new Unsupported('backend must be espresso, compose, automator or dom');
+    }
+    if (backend === 'automator' && !accessibility) {
+      throw new Unsupported('UIAutomator locators require an accessibility snapshot; request mode=automator.');
+    }
+    if (dumpLocator && matcher) {
+      throw new Unsupported('UIAutomator/DOM require using/value, not an Espresso matcher');
+    }
+    if (scope !== undefined) {
+      if (
+        !dumpLocator ||
+        !scope ||
+        typeof scope !== 'object' ||
+        Array.isArray(scope) ||
+        Object.keys(scope).some(
+          (key) => !['windowId', ...(backend === 'dom' ? ['webview', 'context'] : [])].includes(key),
+        ) ||
+        (scope.windowId !== undefined && !Number.isSafeInteger(scope.windowId)) ||
+        (scope.webview !== undefined &&
+          (typeof scope.webview !== 'string' || !/^\/roots\/\d+(\/children\/\d+)*$/.test(scope.webview))) ||
+        (scope.context !== undefined &&
+          (!Array.isArray(scope.context) ||
+            scope.context.some(
+              (item) =>
+                !item ||
+                !['frame', 'shadow'].includes(item.type) ||
+                typeof item.selector !== 'string' ||
+                Object.keys(item).some((key) => !['type', 'selector'].includes(key)),
+            )))
+      ) {
+        throw new Unsupported('Invalid locator scope; use windowId for automator, windowId/webview/context for dom');
+      }
     }
     if (backend === 'compose' && matcher) {
       throw new Unsupported('Compose requires using/value, matching the driver locator API');
@@ -332,9 +367,13 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
     if (matcher && using !== undefined) {
       throw new Unsupported('Provide matcher or using/value, not both');
     }
-    const compiled = matcher ? {match: compile(matcher), scope: matcher.scope} : selector(backend, using, value);
+    const compiled = dumpLocator
+      ? snapshotLocator(backend, using, value)
+      : matcher
+        ? {match: compile(matcher), scope: matcher.scope}
+        : selector(backend, using, value);
     const match = typeof compiled === 'function' ? compiled : compiled.match;
-    const scope = compiled.scope ? compile(compiled.scope, true) : null;
+    const rootScope = compiled.scope ? compile(compiled.scope, true) : null;
     if (!snapshot || !Array.isArray(snapshot.roots)) {
       reasons.add('Snapshot roots are unavailable');
     }
@@ -358,6 +397,7 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
         return;
       }
       const entry = {node, parent, root, path, children: [], semanticsRoot};
+      entry.webview = node.type === 'DomNode' ? (parent?.node.type === 'DomNode' ? parent.webview : parent) : null;
       if (!root) {
         entry.root = entry;
         roots.push(entry);
@@ -371,9 +411,18 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
         complete = false;
         reasons.add('A node is truncated or has collection errors');
       }
-      if (!['View', 'SemanticsNode', 'Error'].includes(node.type)) {
+      if (!['View', 'SemanticsNode', 'AccessibilityNode', 'DomNode', 'Error'].includes(node.type)) {
         complete = false;
         reasons.add('Unknown node type');
+      }
+      if (
+        backend === 'dom' &&
+        ((node.dom_status && node.dom_status !== 'captured') ||
+          (node.type === 'DomNode' &&
+            (!entry.webview || !Array.isArray(node.context) || !sameContext(node.context, node.context))))
+      ) {
+        complete = false;
+        reasons.add('DOM collection or document context is unavailable');
       }
       if (node.children !== undefined && !Array.isArray(node.children)) {
         complete = false;
@@ -388,10 +437,18 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
       visit(root, null, null, `/roots/${index}`, null);
     }
     const selectedRoots = roots.filter((root) => {
-      if (!scope) {
+      if (scope?.windowId !== undefined) {
+        const id = root.node.window?.id ?? root.node.windowId;
+        if (id === undefined) {
+          complete = false;
+          reasons.add('Window ID is unavailable');
+        }
+        return id === scope.windowId;
+      }
+      if (!rootScope) {
         return true;
       }
-      const scoped = root.node.window ? scope({node: root.node.window}) : UNKNOWN;
+      const scoped = root.node.window ? rootScope({node: root.node.window}) : UNKNOWN;
       if (scoped === UNKNOWN) {
         complete = false;
         reasons.add('Window scope could not be evaluated');
@@ -410,7 +467,15 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
     for (const entry of entries) {
       if (
         !selectedRoots.includes(entry.root) ||
-        entry.node.type !== (backend === 'compose' ? 'SemanticsNode' : 'View')
+        entry.node.type !==
+          {compose: 'SemanticsNode', espresso: 'View', automator: 'AccessibilityNode', dom: 'DomNode'}[backend]
+      ) {
+        continue;
+      }
+      if (
+        backend === 'dom' &&
+        ((scope?.webview !== undefined && scope.webview !== entry.webview?.path) ||
+          !sameContext(entry.node.context, scope?.context ?? []))
       ) {
         continue;
       }
@@ -438,23 +503,39 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
           : matches.length === 1
             ? 'unique'
             : 'not_found';
-    report.matches = matches.slice(0, Math.max(1, Math.min(100, limit))).map(({node, path, root}) => ({
+    report.matches = matches.slice(0, Math.max(1, Math.min(100, limit))).map(({node, path, root, webview}) => ({
       path,
       window: root.node.window,
       ...(node.type === 'SemanticsNode' ? {config: node.config} : {}),
+      ...(node.type === 'DomNode'
+        ? {
+            webview: webview?.path,
+            context: node.context,
+            selector: node.selector,
+            tagName: node.tagName,
+            attributes: node.attributes,
+          }
+        : {}),
       ...Object.fromEntries(
         [
           'type',
+          'source',
           'className',
           'resourceId',
           'viewId',
           'test_tag',
           'node_id',
           'text',
+          'contentDescription',
+          'packageName',
+          'windowId',
           'bounds',
+          'dom_bounds',
+          'displayed',
+          'enabled',
+          'sensitive',
           'visibility',
           'effective_visibility',
-          'displayed',
           ...recyclerProperties,
         ]
           .filter((key) => Object.hasOwn(node, key))
@@ -472,7 +553,12 @@ export function checkSnapshotMatcher({snapshot, backend = 'espresso', matcher, u
 
 export async function freshMatcherCheck(driver, query) {
   const snapshot = await driver.executeScript('mobile: ultronSnapshot', [
-    {maxDepth: 100, maxNodes: 10000, useUnmergedTree: true},
+    {
+      maxDepth: 100,
+      maxNodes: 10000,
+      useUnmergedTree: true,
+      mode: query.backend === 'automator' ? 'automator' : 'ultron',
+    },
   ]);
   return {snapshot, preflight: checkSnapshotMatcher({...query, snapshot})};
 }

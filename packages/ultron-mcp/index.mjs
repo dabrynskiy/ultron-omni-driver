@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 import {composeParameters} from './compose.mjs';
+import {mixedCommands, mixedParameters} from './mixed.mjs';
 import {ScenarioRecorder} from './recording.mjs';
 import {checkSnapshotMatcher, freshMatcherCheck} from './snapshot-match.mjs';
 
@@ -244,12 +245,12 @@ export default class UltronMcpPlugin {
       [
         'ultron_back',
         'ultronBack',
-        'Press Android Back and return the operation plus a mixed snapshot. Replayable in a batch and recorded when recording is active.',
+        'Press Android Back and return the operation plus the session-selected snapshot. Replayable in a batch and recorded when recording is active.',
       ],
       [
         'ultron_hide_keyboard',
         'ultronHideKeyboard',
-        'Hide the Android keyboard and return the operation plus a mixed snapshot. Replayable in a batch and recorded when recording is active.',
+        'Hide the Android keyboard and return the operation plus the session-selected snapshot. Replayable in a batch and recorded when recording is active.',
       ],
     ]) {
       add(
@@ -327,14 +328,30 @@ export default class UltronMcpPlugin {
       {
         name: 'ultron_check_matcher',
         description:
-          'Check whether a matcher/locator has exactly one match in a fresh or supplied JSON dump, without acting. backend=espresso accepts matcher or using/value; compose accepts using/value (test tag, exact text, content description) in an unmerged tree. Reports unique, not_found, ambiguous, unsupported or indeterminate with bounded candidate details. Includes hidden nodes. Partial dumps, unsupported semantics and uncertain window selection never prove uniqueness. UI can change after this observation.',
+          'Check locator uniqueness in a fresh or saved JSON dump, without acting. espresso accepts matcher or using/value; compose accepts test tag/text/accessibility id; automator accepts id/text/accessibility id/class name or -android uiautomator with exact UiSelector string/boolean predicates; dom accepts id or bounded css selector (tags, IDs, saved attributes, child/descendant, integer :nth-of-type). scope selects windowId, DOM webview dump path and frame/shadow context (default [] = top documents). Counts each source separately, including hidden nodes. Returns unique, not_found, ambiguous, unsupported or indeterminate; incomplete/unknown data never proves uniqueness. Fresh automator checks request mode=automator; other checks use mode=ultron. Does not add action backends. UI can change after observation.',
         parameters: z
           .object({
             ...session,
-            backend: z.enum(['espresso', 'compose']),
+            backend: z.enum(['espresso', 'compose', 'automator', 'dom']),
             matcher: matcher.optional(),
             using: z.string().optional(),
             value: z.string().optional(),
+            scope: z
+              .object({
+                windowId: z.number().int().optional(),
+                webview: z
+                  .string()
+                  .optional()
+                  .describe('DOM host JSON path, e.g. /roots/0/children/2, from this snapshot.'),
+                context: z
+                  .array(z.object({type: z.enum(['frame', 'shadow']), selector: z.string()}).strict())
+                  .optional(),
+              })
+              .strict()
+              .optional()
+              .describe(
+                'automator: windowId; dom: windowId/webview/context. Omitted DOM context means top documents. Espresso uses matcher.scope.',
+              ),
             snapshot: z
               .record(z.string(), z.json())
               .optional()
@@ -355,10 +372,11 @@ export default class UltronMcpPlugin {
       {
         name: 'ultron_snapshot',
         description:
-          'Observe the current UI as a JSON tree of Android Views and embedded Compose semantics (composeOn server). Includes hidden subtrees and window metadata. Check status, errors and truncated before choosing a target. Does not switch the driver backend.',
+          'Observe one JSON tree. mode=ultron (session default) reads Android Views and Compose; automator reads accessibility windows including system dialogs. Both automatically include DOM for accessible in-process WebViews. Omitted mode uses ultronSnapshotMode. Check status, errors and truncated. Sources identify executor semantics; this tool does not switch action backends or support external browser DOM.',
         parameters: z
           .object({
             ...session,
+            mode: z.enum(['ultron', 'automator']).optional(),
             maxDepth: z.number().int().min(0).max(100).optional(),
             maxNodes: z.number().int().min(1).max(10000).optional(),
             useUnmergedTree: z
@@ -386,7 +404,7 @@ export default class UltronMcpPlugin {
       {
         name: 'ultron_act',
         description:
-          'Perform one Espresso action on a unique Android View and return the operation plus a mixed View/Compose snapshot. Enables automatic snapshots. Compose semantics are observable but cannot be targeted by this tool. A successful action does not prove the expected test result; use ultron_assert. After transport loss, observe before retrying a mutation.',
+          'Perform one Espresso action on a unique Android View and return the operation plus the session-selected snapshot. Enables automatic snapshots. Compose semantics are observable but cannot be targeted by this tool. A successful action does not prove the expected test result; use ultron_assert. After transport loss, observe before retrying a mutation.',
         parameters: z
           .object({
             ...session,
@@ -484,7 +502,7 @@ export default class UltronMcpPlugin {
       {
         name: 'ultron_assert',
         description:
-          'Verify an expected Android View state with Ultron waiting and return the assertion plus a mixed View/Compose snapshot. Use assertion for named Ultron checks (e.g. isDisplayed, isNotEnabled, hasText with text, isDisplayingAtLeast with percentage), or condition for a custom Espresso matcher, or exists for legacy existence/absence checks. Named checks cannot be combined with condition/exists. Default checks existence. Does not assert Compose semantics. Assertion failure is an MCP error and retains the snapshot as evidence.',
+          'Verify an expected Android View state with Ultron waiting and return the assertion plus the session-selected snapshot. Use assertion for named Ultron checks (e.g. isDisplayed, isNotEnabled, hasText with text, isDisplayingAtLeast with percentage), or condition for a custom Espresso matcher, or exists for legacy existence/absence checks. Named checks cannot be combined with condition/exists. Default checks existence. Does not assert Compose semantics. Assertion failure is an MCP error and retains the snapshot as evidence.',
         parameters: z
           .object({
             ...session,
@@ -564,8 +582,8 @@ export default class UltronMcpPlugin {
         {
           name: assertion ? 'ultron_compose_assert' : 'ultron_compose_act',
           description: assertion
-            ? 'Verify Compose semantics using Ultron waiting and return operation plus a fresh mixed View/Compose snapshot, including failures. Default assertion=exists. Text equality accepts expected arrays; substring/ignoreCase default false. Checks run on Android, including unique target resolution. No global driver switch. Does not prove that absent Lazy items are absent from the data set.'
-            : 'Perform one Compose operation on a unique semantics node, returning operation plus a fresh mixed View/Compose snapshot on success/failure. Does not switch the global driver. scrollTo targets an existing node; scrollToIndex/Key/Node target the scroll container and can find off-screen Lazy items. Actions require the corresponding component semantics. selectText uses input text indices; setSelection requires explicit traversalMode. Custom actions use an exact label. A successful invocation requires a separate assertion to verify its UI effect. After transport loss, observe before repeating a mutation.',
+            ? 'Verify Compose semantics using Ultron waiting and return operation plus a fresh session-selected snapshot, including failures. Default assertion=exists. Text equality accepts expected arrays; substring/ignoreCase default false. Checks run on Android, including unique target resolution. No global driver switch. Does not prove that absent Lazy items are absent from the data set.'
+            : 'Perform one Compose operation on a unique semantics node, returning operation plus a fresh session-selected snapshot on success/failure. Does not switch the global driver. scrollTo targets an existing node; scrollToIndex/Key/Node target the scroll container and can find off-screen Lazy items. Actions require the corresponding component semantics. selectText uses input text indices; setSelection requires explicit traversalMode. Custom actions use an exact label. A successful invocation requires a separate assertion to verify its UI effect. After transport loss, observe before repeating a mutation.',
           parameters: composeParameters(assertion, session),
           annotations: {
             readOnlyHint: false,
@@ -691,15 +709,33 @@ export default class UltronMcpPlugin {
       (driver, args) => operation(driver, 'ultronRecycler', args),
     );
 
+    const mixed = mixedParameters(matcher, timeout);
+    const mixedTools = mixedParameters(matcher, timeout, session);
+    for (const command of mixedCommands) {
+      const automator = command.startsWith('ultronAutomator');
+      const assertion = command.endsWith('Assert');
+      add(
+        {
+          name: `ultron_${automator ? 'automator' : 'web'}_${assertion ? 'assert' : 'act'}`,
+          description: automator
+            ? 'Execute one Ultron UiAutomator operation. Resolves the selector on each retry; requires one match unless index is explicit. Assertions check expectations; false getter values are successful reads. Returns accessibility diagnostics. Replayable in schemaVersion 2 batches.'
+            : 'Execute one Ultron Web Atom operation. Resolves WebView, frames and DOM element afresh on each retry, requiring unique targets. Uses an explicit assertion for expected state. Returns the target WebView DOM and native context. Replayable in schemaVersion 2 batches.',
+          parameters: mixedTools[command],
+          annotations: {readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true},
+        },
+        (driver, args) => operation(driver, command, args),
+      );
+    }
+
     add(
       {
         name: 'ultron_batch',
         description:
-          'Execute 1..100 Espresso/Compose/RecyclerView, Back, keyboard or locator-based element operations sequentially on Android in one request. Each step has a unique id, a command (without mobile:), and raw driver params. ultronElement requires an explicit backend. Espresso assertions use condition/exists. Validates the entire batch before acting, stops at the first failure, and marks later steps skipped. Captures a mixed snapshot only for the failed step without changing session settings. No automatic retries; observe after transport loss.',
+          'Execute 1..100 UI operations; schemaVersion 2 also supports Ultron Automator and Web Atom actions/assertions. Runs operations sequentially on Android in one request. Each step has a unique id, a command (without mobile:), and raw driver params. ultronElement requires an explicit backend. Espresso assertions use condition/exists. Validates the entire batch before acting, stops at the first failure, and marks later steps skipped. Captures a snapshot only for the failed step (session-selected in v1; executor-specific in v2) without changing session settings. No automatic retries; observe after transport loss.',
         parameters: z
           .object({
             ...session,
-            schemaVersion: z.literal(1).optional(),
+            schemaVersion: z.union([z.literal(1), z.literal(2)]).optional(),
             steps: z
               .array(
                 z
@@ -718,6 +754,7 @@ export default class UltronMcpPlugin {
                       'ultronBack',
                       'ultronHideKeyboard',
                       'ultronElement',
+                      ...mixedCommands,
                     ]),
                     params: z
                       .record(z.string(), z.json())
@@ -738,6 +775,22 @@ export default class UltronMcpPlugin {
                 ctx.addIssue({code: 'custom', path: ['steps', i, 'id'], message: 'Step IDs must be unique'});
               }
               ids.add(args.steps[i].id);
+              const step = args.steps[i];
+              if (mixedCommands.includes(step.command)) {
+                if (args.schemaVersion !== 2) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    path: ['steps', i, 'command'],
+                    message: 'Mixed executor commands require schemaVersion 2',
+                  });
+                }
+                const parsed = mixed[step.command].safeParse(step.params);
+                if (!parsed.success) {
+                  for (const issue of parsed.error.issues) {
+                    ctx.addIssue({code: 'custom', path: ['steps', i, 'params', ...issue.path], message: issue.message});
+                  }
+                }
+              }
             }
           }),
         annotations: {readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true},
@@ -746,6 +799,7 @@ export default class UltronMcpPlugin {
         const token = await this.recorder.begin(
           driver,
           args.steps.map(({command, params}) => ({command, params})),
+          args.schemaVersion ?? 1,
         );
         let value;
         try {
@@ -791,7 +845,7 @@ export default class UltronMcpPlugin {
       {
         name: 'ultron_last_result',
         description:
-          'Read the last saved Espresso or Compose Ultron operation and its snapshot, or null. This is not a command journal or an idempotency guarantee; another command may have replaced it.',
+          'Read the last saved Ultron operation and its snapshot, or null. This is not a command journal or an idempotency guarantee; another command may have replaced it.',
         parameters: z.object(session).strict(),
         annotations: readOnly,
       },
@@ -805,11 +859,12 @@ export default class UltronMcpPlugin {
       {
         name: 'ultron_settings',
         description:
-          'Read Ultron snapshot settings, optionally enable/disable automatic snapshots or select espresso/compose for standard Appium commands. Compose requires a composeOn server. ultron_act and ultron_assert always use Espresso and automatically enable snapshots; standard Compose commands use the selected driver.',
+          'Read snapshot settings; snapshotMode selects ultron or automator observations for the session, including post-operation snapshots. Does not change action executors. Optionally enable automatic snapshots or select espresso/compose for standard Appium commands. Compose requires composeOn.',
         parameters: z
           .object({
             ...session,
             snapshotEnabled: z.boolean().optional(),
+            snapshotMode: z.enum(['ultron', 'automator']).optional(),
             driver: z.enum(['espresso', 'compose']).optional(),
           })
           .strict(),
@@ -819,6 +874,9 @@ export default class UltronMcpPlugin {
         const settings = {};
         if (args.snapshotEnabled !== undefined) {
           settings.ultronSnapshotEnabled = args.snapshotEnabled;
+        }
+        if (args.snapshotMode !== undefined) {
+          settings.ultronSnapshotMode = args.snapshotMode;
         }
         if (args.driver !== undefined) {
           settings.driver = args.driver;

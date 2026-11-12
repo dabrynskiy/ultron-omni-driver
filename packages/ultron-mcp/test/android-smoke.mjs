@@ -25,7 +25,7 @@ const condition = {class: 'LlmViewMatchers', name: 'propertyEquals', args: ['dis
 let owned = false;
 try {
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length, 19);
+  assert.equal((await client.listTools()).tools.length, 23);
   const status = await call('ultron_session', {action: 'status'});
   assert.deepEqual(status.structuredContent.sessions, [], 'This smoke test needs an unused Android server');
   await call('ultron_session', {
