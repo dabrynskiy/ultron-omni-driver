@@ -38,7 +38,11 @@ blocked until the recording is finished or discarded. External host/ADB actions 
 ## Recorded steps
 
 Recorded operations are `ultronAct`, `ultronAssert`, `ultronComposeAct`, `ultronComposeAssert`,
-`ultronRecycler`, `ultronBack`, `ultronHideKeyboard`, and all `ultronElement` calls.
+`ultronRecycler`, `ultronBack`, `ultronHideKeyboard`, all `ultronElement` calls, and explicit
+`ultronAutomatorAct`/`ultronAutomatorAssert` and `ultronWebAct`/`ultronWebAssert` operations.
+Mixed commands or an explicitly version 2 batch promote the exported scenario to `schemaVersion: 2`.
+Pure version 1 recordings keep version 1. Web steps retain WebView/DOM locators and the frame path,
+without cached element references.
 Element lookup/getters are retained because locator resolution can itself scroll the UI;
 returned values are not automatically converted to assertions. Explicit batch calls are flattened into their
 executed steps. Recording never executes a command a second time.

@@ -4,6 +4,8 @@ import com.atiurin.ultron.core.common.Operation
 import com.atiurin.ultron.core.common.OperationResult
 import com.atiurin.ultron.core.config.UltronCommonConfig
 import com.atiurin.ultron.core.espresso.UltronEspressoOperation
+import com.atiurin.ultron.core.uiautomator.UiAutomatorOperation
+import com.atiurin.ultron.core.espressoweb.operation.WebInteractionOperation
 import com.atiurin.ultron.listeners.UltronLifecycleListener
 import io.appium.espressoserver.lib.compose.ComposeOperationBridge
 
@@ -52,7 +54,7 @@ class UltronSnapshotListener(private val capture: (() -> ViewSnapshot)? = null) 
         // A dump failure must never replace the action's native result or exception.
         val snapshot = if (UltronSnapshots.automaticCaptureSuppressed) UltronSnapshots.disabledSnapshot() else try {
             if (ComposeOperationBridge.isOperation(operationResult.operation)) ComposeOperationBridge.waitForIdle()
-            capture?.invoke() ?: ViewHierarchyDumper(useUnmergedTree = useUnmergedTree).capture()
+            capture?.invoke() ?: SnapshotCapture.capture(useUnmergedTree = useUnmergedTree)
         } catch (error: Throwable) {
             if (error !is Exception && error !is AssertionError) throw error
             ViewSnapshot(status = "unavailable", roots = emptyList(), nodeCount = 0, truncated = false,
@@ -65,14 +67,20 @@ class UltronSnapshotListener(private val capture: (() -> ViewSnapshot)? = null) 
                 type = operationResult.operation.type.toString(),
                 durationMs = operationResult.executionTimeMs,
                 error = if (operationResult.success) null else operationResult.exceptions.lastOrNull()?.toString(),
-                backend = if (operationResult.operation is UltronEspressoOperation) "espresso" else "compose",
+                backend = when (operationResult.operation) {
+                    is UiAutomatorOperation -> "automator"
+                    is WebInteractionOperation<*> -> "web"
+                    is UltronEspressoOperation -> "espresso"
+                    else -> "compose"
+                },
             ), snapshot,
         )
         depth.remove()
         record(result)
     }
 
-    private fun supported(operation: Operation) = operation is UltronEspressoOperation || ComposeOperationBridge.isOperation(operation)
+    private fun supported(operation: Operation) = operation is UltronEspressoOperation ||
+        operation is UiAutomatorOperation || operation is WebInteractionOperation<*> || ComposeOperationBridge.isOperation(operation)
     fun record(result: UltronSnapshotResult) {
         val safe = result.redactSensitiveDetails()
         if (commandActive.get() == true) current.set(safe)
@@ -102,7 +110,7 @@ object UltronSnapshots {
         captureEnabled = value
     }
 
-    fun reset() = setEnabled(false)
+    fun reset() { setEnabled(false); SnapshotCapture.setMode("ultron") }
 
     /** Batch steps keep operation results but defer capture until the first failed step. */
     internal fun <T> withoutAutomaticCapture(block: () -> T): T {
@@ -114,11 +122,12 @@ object UltronSnapshots {
     }
 
     internal fun disabledSnapshot() = ViewSnapshot(
+        backend = if (SnapshotCapture.mode == "automator") "automator" else "espresso",
         status = "disabled", roots = emptyList(), nodeCount = 0, truncated = false,
         errors = emptyList(), capturedAtMs = System.currentTimeMillis(), durationMs = 0,
     )
 
     /** Explicit ultronSnapshot remains available; this gate controls automatic post-operation dumps. */
     fun captureForOperation(): ViewSnapshot = if (enabled && !automaticCaptureSuppressed)
-        ViewHierarchyDumper(useUnmergedTree = listener.useUnmergedTree).capture() else disabledSnapshot()
+        SnapshotCapture.capture(useUnmergedTree = listener.useUnmergedTree) else disabledSnapshot()
 }

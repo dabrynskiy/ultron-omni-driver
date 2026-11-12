@@ -11,7 +11,7 @@ import androidx.test.espresso.matcher.RootMatchers
 /** The dump and matchers deliberately share these getters and their value types. */
 object ViewProperties {
     val names = setOf(
-        "type", "className", "viewId", "resourceId", "contentDescription", "visibility", "effective_visibility", "displayed",
+        "type", "source", "className", "viewId", "resourceId", "contentDescription", "visibility", "effective_visibility", "displayed",
         "alpha", "enabled", "focused", "focusable", "has_focusable", "clickable", "is_selected",
         "layoutParams", "layout_params_class", "tag", "tag_type", "tag_is_stringified",
         "bounds", "bounds.l", "bounds.t", "bounds.r", "bounds.b",
@@ -38,6 +38,7 @@ object ViewProperties {
             try { result[name] = get() } catch (error: Exception) { onError(name, error) }
         }
         field("type") { "View" }
+        field("source") { "espresso" }
         field("sensitive") { sensitive }
         field("className") { view.javaClass.name }
         RecyclerViewProperties.read(view, ::field)

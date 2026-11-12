@@ -12,11 +12,12 @@ class UltronBatchParamsTest {
     @Test fun rejectsCoercedVersionsNullAndUnknownEnvelopeFields() {
         for (body in listOf("null", "[]", "{}", """{"steps":null}""", """{"steps":{}}""",
             """{"schemaVersion":"1","steps":[]}""", """{"schemaVersion":true,"steps":[]}""",
-            """{"schemaVersion":1.5,"steps":[]}""", """{"schemaVersion":2,"steps":[]}""",
+            """{"schemaVersion":1.5,"steps":[]}""", """{"schemaVersion":3,"steps":[]}""",
             """{"schemaVersion":null,"steps":[]}""", """{"steps":[],"continueOnFailure":true}""")) {
             assertThrows(body, InvalidArgumentException::class.java) { UltronBatchParams.validateJson(body) }
         }
         UltronBatchParams.validateJson("""{"schemaVersion":1,"steps":[]}""")
+        UltronBatchParams.validateJson("""{"schemaVersion":2,"steps":[]}""")
     }
 
     @Test fun rejectsInvalidStepsBeforeTryingToExecuteThem() {

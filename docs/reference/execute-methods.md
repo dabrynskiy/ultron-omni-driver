@@ -1654,13 +1654,36 @@ Available since driver version 6.0.7.
 W3C WebDriver capabilities. The exact structure may depend on the Chrome/ChromeDriver version and
 the initial session capabilities.
 
+### `mobile: ultronSnapshot`
+
+Returns one JSON UI snapshot. Optional arguments: `mode` (`ultron` or `automator`),
+`maxDepth` (0..100, default 100), `maxNodes` (1..10000, default 5000), and `useUnmergedTree`
+(default true, applies to Compose semantics in Ultron mode). Omitted mode uses the session's
+`ultronSnapshotMode` setting, initially `ultron`. A per-call mode does not change that setting.
+Both modes automatically append available in-process WebView DOM. There is no DOM override option.
+See [Unified UI snapshots](../guides/llm-views.md#snapshot-contract) for source fields, limits,
+password redaction and partial-result semantics. HTTP: `POST /session/:sessionId/appium/execute_mobile/ultron_snapshot`.
+
 ### `mobile: ultronBatch`
 
 Executes Espresso, Compose, RecyclerView, Back, keyboard and locator-based element operations in one Android
-request. Accepts required `steps` and optional `schemaVersion: 1`. Validates all steps before
+request. Accepts required `steps` and optional `schemaVersion: 1 | 2` (default `1`). Version 2
+also supports Ultron Automator and Web Atom actions/assertions and selects failure diagnostics
+from the failed step's executor. Validates all steps before
 execution, stops at the first failure and captures a snapshot for that step only, without changing
 session snapshot settings. See [Batch operations](../guides/batch-operations.md) for the request
 and result contracts, HTTP endpoint, MCP tool and execution limits.
+
+### `mobile: ultronAutomatorAct`, `mobile: ultronAutomatorAssert`, `mobile: ultronWebAct`, `mobile: ultronWebAssert`
+
+Explicit Ultron Automator and Web Atom operations with structured operation results and optional
+automatic snapshots. Automator requires `strategy`/`locator`; Web requires `webViewMatcher` and
+a DOM `locator`, with an optional `frames` path. Actions require `action`; checks use `assertion`
+(default `exists`). Each operation resolves targets inside its Ultron retry boundary. Missing or
+ambiguous action targets fail; boolean getters returning `false` remain successful reads.
+The same commands replay in version 2 batches. See the
+[mixed scenario contract](../guides/batch-operations.md#mixed-espresso-automator-and-web-scenarios)
+for supported operations, parameters and diagnostic behavior.
 
 ### `mobile: ultronBack`, `mobile: ultronHideKeyboard`, `mobile: ultronElement`
 
@@ -1670,7 +1693,7 @@ and `action`, with `text` for text input. It resolves a fresh element per call w
 the global backend. Results retain operation/snapshot plus element/getter values; `false` is not
 an assertion failure. See [Batch operations](../guides/batch-operations.md).
 
-### `mobile: ultronSnapshot`, `mobile: ultronAct`, `mobile: ultronAssert`, `mobile: ultronRecycler`, `mobile: ultronLastResult`
+### `mobile: ultronAct`, `mobile: ultronAssert`, `mobile: ultronRecycler`, `mobile: ultronLastResult`
 
 Mixed View/Compose hierarchy snapshots, View property matchers and Espresso Ultron operations with a
 post-operation snapshot. Compose semantics are included in the `composeOn` flavor; explicit snapshots

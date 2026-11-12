@@ -92,7 +92,7 @@ test('batch MCP rejects malformed envelopes before contacting the driver', async
   });
   for (const args of [
     {steps: []},
-    {schemaVersion: 2, steps},
+    {schemaVersion: 3, steps},
     {steps: [steps[0], steps[0]]},
     {steps: [{...steps[0], id: ' '}]},
     {steps: [{...steps[0], command: 'ultronSnapshot'}]},

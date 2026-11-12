@@ -117,7 +117,7 @@ export function createStandaloneServer({url, timeoutMs, bootstrap, lifecycleOpti
         (lifecycle
           ? 'The configured Android device is prepared automatically before the first device tool: install prebuilt APK once per process, forward a dynamic port, start instrumentation and create a session. ultron_session status does not start Android. close releases owned resources; the next device call starts again. MCP disconnect also cleans up. '
           : 'Connect directly to a manually started Android instrumentation HTTP server through adb forward. Start with ultron_session status/create/attach. Closing MCP leaves Android running; ultron_session close stops instrumentation. ') +
-        'Use ultron_snapshot, act, assert for Views and explicit ultron_compose_act/assert for Compose. Start ultron_recording_start before a test case to save actions/assertions automatically; finish explicitly after checking expected results. Recordings store literal input data. A successful click does not prove a test passed. Observe after a lost mutation response before repeating.',
+        'Use ultron_snapshot, act, assert for Views, ultron_compose_act/assert for Compose, ultron_automator_act/assert for accessibility and ultron_web_act/assert for Web Atoms. Mixed batches require schemaVersion 2. Start ultron_recording_start before a test case to save actions/assertions automatically; finish explicitly after checking expected results. Recordings store literal input data. A successful click does not prove a test passed. Observe after a lost mutation response before repeating.',
     },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({

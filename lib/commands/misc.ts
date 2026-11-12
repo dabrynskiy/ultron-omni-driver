@@ -179,14 +179,20 @@ export async function mobileUiautomatorPageSource(this: EspressoDriver): Promise
 
 /**
  * Apply the given settings to the espresso driver and the espresso server.
- * Server errors are logged for legacy settings; ultronSnapshotEnabled changes propagate errors.
+ * Server errors are logged for legacy settings; snapshot setting changes propagate errors.
  * @param settings - Settings object containing key-value pairs of settings to apply
  * @returns Promise that resolves when settings are updated
  */
 export async function updateSettings(this: EspressoDriver, settings: SettingsOptions): Promise<void> {
-  if (Object.hasOwn(settings, 'ultronSnapshotEnabled')) {
-    if (typeof settings.ultronSnapshotEnabled !== 'boolean') {
+  if (Object.hasOwn(settings, 'ultronSnapshotEnabled') || Object.hasOwn(settings, 'ultronSnapshotMode')) {
+    if (Object.hasOwn(settings, 'ultronSnapshotEnabled') && typeof settings.ultronSnapshotEnabled !== 'boolean') {
       throw new errors.InvalidArgumentError('ultronSnapshotEnabled must be a boolean');
+    }
+    if (
+      Object.hasOwn(settings, 'ultronSnapshotMode') &&
+      !['ultron', 'automator'].includes(settings.ultronSnapshotMode as string)
+    ) {
+      throw new errors.InvalidArgumentError('ultronSnapshotMode must be ultron or automator');
     }
     // Commit the local setting only after the device has accepted the change.
     await this.espresso.jwproxy.command('/appium/settings', 'POST', {settings});

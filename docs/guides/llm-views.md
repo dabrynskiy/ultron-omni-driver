@@ -1,5 +1,5 @@
 ---
-title: View and Compose snapshots for LLM agents
+title: Unified UI snapshots for LLM agents
 ---
 
 These APIs combine [Ultron](https://open-tool.github.io/ultron/docs/) operation execution with
@@ -11,8 +11,10 @@ underlying mechanisms; the remote contract supported by this fork is documented 
 The Ultron extensions describe Android Views and, in the `composeOn` flavor, embedded Compose
 semantics trees. They execute Espresso actions/assertions with a post-operation snapshot. Explicit
 [Compose operations](compose-operations.md) provide the same result format for semantics nodes.
-The `composeOff` flavor includes Views only. Accessibility trees of other apps and Web DOM trees
-are outside this API. `ultronAct`/`ultronAssert` explicitly use Espresso, regardless of the current `driver`
+The `composeOff` flavor omits Compose semantics. Select `mode: "automator"` on the same snapshot command
+to observe accessibility windows, including system dialogs and other apps. Both modes automatically
+add available DOM for WebViews inside the instrumented app. External browser DOM is outside this API.
+`ultronAct`/`ultronAssert` explicitly use Espresso, regardless of the current `driver`
 setting; adding Compose nodes to the observation does not make `ultronAct`/`ultronAssert` Compose executors.
 
 ## Sensitive fields
@@ -106,11 +108,27 @@ such as `assertion: "isDisplayed"`, `assertion: "hasText", text: "Saved"`, and
 
 ## Snapshot contract
 
-The response contains `schemaVersion`, `backend: "espresso"`, `snapshotId`, `status`, `roots`,
-`nodeCount`, `truncated`, `errors`, `capturedAtMs` and `durationMs`. `backend: "espresso"` identifies
-the root provider, not the types of children in the tree. Status is `captured`, `partial`
+One command accepts optional `mode: "ultron" | "automator"`:
+
+```javascript
+await driver.execute('mobile: ultronSnapshot', {mode: 'automator'});
+// Set the default for this session, including automatic and failed-batch snapshots:
+await driver.updateSettings({ultronSnapshotMode: 'automator'});
+// Override only this observation, without changing the session default:
+await driver.execute('mobile: ultronSnapshot', {mode: 'ultron'});
+```
+
+For MCP, use `ultron_snapshot` with the same `mode`, and `ultron_settings` with `snapshotMode`.
+New sessions default to `ultron`. There is no automatic backend switching and no DOM override flag.
+Snapshot mode controls observations only; it never changes action executors or locator semantics.
+Native matcher checks explicitly request Ultron observations and reject saved accessibility trees.
+
+The response retains `schemaVersion: 1`, `snapshotId`, `status`, `roots`, `nodeCount`, `truncated`,
+`errors`, `capturedAtMs` and `durationMs`, adding `mode`. `backend: "espresso"` identifies the Ultron
+root provider; `backend: "automator"` identifies accessibility. These additive fields preserve existing
+calls and View/Compose properties. Status is `captured`, `partial`
 or `unavailable`. With automatic capture disabled, operation responses contain `status: "disabled"`
-and an empty tree; explicit `ultronSnapshot` still collects a snapshot. Collection uses the active
+and an empty tree; explicit `ultronSnapshot` still collects a snapshot. Ultron collection uses the active
 Espresso roots whose decor View has `visibility=VISIBLE`;
 all their Android View children, including GONE/INVISIBLE subtrees, are retained. The UI thread reads
 properties and traverses the tree; HTTP/Gson serialization runs on the server thread.
@@ -118,13 +136,63 @@ properties and traverses the tree; HTTP/Gson serialization runs on the server th
 Each root node includes a `window` object. Nodes include `children` when applicable. `child_index`
 is the original ViewGroup index and `child_count` includes all children, even when depth/node limits
 truncate the dump. `maxDepth` defaults to 100 (range 0..100); `maxNodes` defaults to 5000 (1..10000),
-shared across roots, Views and semantics nodes. A truncated node contains `truncated` and `truncation_reason`. Text is preserved
-in full. There is no byte-size guarantee for screens with unusually large text or tags.
+shared across roots, Views, semantics, accessibility and DOM nodes. A truncated native node contains
+`truncated` and `truncation_reason`. Native text is preserved in full; DOM strings are capped at 4096
+characters each. There is no byte-size guarantee for screens with unusually large text or tags.
 
 UI-thread scheduling/collection has a 2-second wait limit. A blocked UI produces an unavailable
 snapshot without changing the operation result. A running getter cannot be forcibly interrupted.
 Field/node errors are recorded separately so other nodes remain available. Dumps are observations
 after operations; they do not freeze the application's asynchronous background work.
+
+### Sources and accessibility
+
+Every collected node identifies its `source`: `espresso` (`type: "View"`), `compose`
+(`SemanticsNode`), `accessibility` (`AccessibilityNode`) or `web` (`DomNode`). All use `children`
+for traversal. Common properties such as text, descriptions, resource ID, enabled state and
+`bounds: {l,t,r,b}` retain their names where the source provides them. Missing properties are not
+fabricated as false or empty values.
+
+Accessibility is read directly from `AccessibilityNodeInfo`, without an XML conversion or Appium
+server. Windows are ordered by descending layer and include `id`, `type`, `layer`, `active` and
+`focused` metadata. Nodes include `packageName`, `windowId`, `displayed`, supported control states,
+and screen-pixel bounds. These values describe the published accessibility tree, not native View
+internals or full Compose semantics. Window flags used for collection are restored afterwards.
+Traversal checks its time budget between nodes; Android IPC calls cannot be forcibly interrupted.
+
+### Embedded WebView DOM
+
+DOM is automatically appended to its WebView host in either mode. UIAutomator may already publish
+virtual web accessibility children; these remain distinguishable by their `source`. The DOM collector
+uses the app's existing JavaScript setting and does not enable JavaScript, WebView debugging, or
+Chromedriver. If JavaScript is disabled, the document is not ready, the host cannot be identified
+uniquely, or collection fails, the native tree remains available with a partial status and diagnostic.
+
+WebView hosts carry `dom_status: "captured" | "partial" | "unavailable" | "truncated"`.
+Collection failures include a `dom_error` reason such as `javascript_disabled`, `webview_detached`
+or `timeout`, without including page content in exception diagnostics.
+DOM nodes expose tag name, a CSS `selector`, selected structural/accessibility attributes, direct
+text and ordinary form values. Password inputs (including `autocomplete` password markers) redact
+values, text, descriptions and hints. Script/style contents and arbitrary attributes are omitted.
+`dom_bounds` are CSS pixels in the node's browsing context, not Android tap coordinates;
+the DOM root includes `webview_bounds` in screen pixels. `context` describes frame/shadow boundaries
+for the selector. Open shadow roots and same-origin frames are included; inaccessible frames produce
+a partial result. Closed shadow roots are not observable through this collector.
+
+The native tree and DOM are sequential observations, not an atomic cross-process capture. A shared
+5-second scheduling/wait budget covers discovery and DOM evaluation after native collection, and
+the JavaScript traversal checks a 1-second budget between nodes. A running page script or Android
+getter cannot be forcibly interrupted. DOM observation does not add CSS actions to `ultron_act`.
+
+The MCP `ultron_check_matcher` tool checks locator uniqueness against each source separately:
+`backend: "automator"` supports exact accessibility locators and bounded `UiSelector` chains;
+`backend: "dom"` supports saved DOM IDs and bounded CSS selectors. Optional `scope.windowId`
+selects an accessibility window. DOM `scope.webview` selects the host by its JSON path and
+`scope.context` selects a frame/shadow context (default `[]`, top documents). Matching never crosses
+document boundaries. Unsupported predicates return `unsupported`; incomplete trees or unknown
+matching properties return `indeterminate` unless multiple definite matches already prove ambiguity.
+See the MCP package README for supported predicates and examples. These checks also work offline;
+they do not switch action backends or reserve nodes for later actions.
 
 ## Matching dump properties
 
@@ -148,7 +216,7 @@ The dump and these factories share getters. Supported properties:
 
 | Properties | Meaning |
 | --- | --- |
-| `type`, `className` | `View` and exact runtime class name |
+| `type`, `source`, `className` | `View`, `espresso` and exact runtime class name |
 | `viewId`, `resourceId` | Numeric View ID and full resource name; `NO_ID` or hex when unresolved |
 | `contentDescription` | View content description as plain text, or null |
 | `visibility` | Own visibility: `VISIBLE`, `INVISIBLE`, `GONE` |

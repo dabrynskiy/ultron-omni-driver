@@ -68,8 +68,10 @@ instrumentation APK.
 
 Mixed snapshots require `composeOn` to include Compose nodes. View operations target Views;
 Compose operations target semantics nodes and require the active Compose test rule. The mixed
-snapshot API covers the target app's Views and Compose semantics, not other apps' accessibility
-trees or WebView DOM. RecyclerView assertions cover current adapter data; Compose absence checks
+snapshot API defaults to the target app's Views and Compose semantics. Its explicit `automator` mode
+reads accessibility windows, including system UI; both modes add available in-process WebView DOM.
+External browser DOM is outside this API, and observing a source does not switch action executors.
+RecyclerView assertions cover current adapter data; Compose absence checks
 cover the current semantics tree, not every uncomposed Lazy item.
 
 The combined response removes the need for a separate snapshot request after each explicit

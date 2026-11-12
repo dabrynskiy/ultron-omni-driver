@@ -20,7 +20,9 @@
     "standalone.mjs",
     "lifecycle.mjs",
     "snapshot-match.mjs",
+    "snapshot-locators.mjs",
     "compose.mjs",
+    "mixed.mjs",
     "recording.mjs",
     "bin",
     "examples",
@@ -37,7 +39,8 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "test:host": "node test/host-smoke.mjs",
-    "test:android": "node test/android-smoke.mjs"
+    "test:android": "node test/android-smoke.mjs",
+    "test:locators:android": "node test/locator-android-smoke.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

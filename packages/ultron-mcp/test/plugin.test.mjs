@@ -53,7 +53,7 @@ function setup() {
 
 test('registers discoverable JSON schemas and preserves mixed snapshots', async () => {
   const {tools, calls, selected} = setup();
-  assert.equal(tools.size, 17);
+  assert.equal(tools.size, 21);
   for (const tool of tools.values()) {
     assert.equal(z.toJSONSchema(tool.parameters).type, 'object');
   }
@@ -78,6 +78,30 @@ test('enables snapshots, preserves empty text/zero timeout, and sends only drive
   ]);
 });
 
+test('one snapshot tool forwards explicit observation modes and rejects DOM overrides', async () => {
+  const {tools, driver, calls} = setup();
+  const accessibility = {
+    ...snapshot,
+    backend: 'automator',
+    mode: 'automator',
+    roots: [{type: 'AccessibilityNode', source: 'accessibility'}],
+  };
+  driver.executeScript = async (script, args) => {
+    calls.push([script, args]);
+    return accessibility;
+  };
+  const output = await tools.get('ultron_snapshot').execute({mode: 'automator', maxDepth: 0, maxNodes: 1});
+  assert.equal(output.isError, false);
+  assert.deepEqual(output.structuredContent, accessibility);
+  assert.deepEqual(calls, [['mobile: ultronSnapshot', [{mode: 'automator', maxDepth: 0, maxNodes: 1}]]]);
+  for (const args of [{mode: 'auto'}, {mode: 'dom'}, {includeDom: false}]) {
+    assert.equal((await tools.get('ultron_snapshot').execute(args)).isError, true);
+  }
+  assert.equal(calls.length, 1);
+  assert.equal((await tools.get('ultron_settings').execute({snapshotMode: 'automator'})).isError, false);
+  assert.deepEqual(calls[1], ['updateSettings', {ultronSnapshotMode: 'automator'}]);
+});
+
 test('assertion failures are MCP errors retaining the operation and UI evidence', async () => {
   const {tools, driver} = setup();
   const failed = {...operation, operation: {status: 'failure', error: 'Expected text missing'}};
@@ -85,6 +109,63 @@ test('assertion failures are MCP errors retaining the operation and UI evidence'
   const output = await tools.get('ultron_assert').execute({matcher, exists: false, timeoutMs: 0});
   assert.equal(output.isError, true);
   assert.deepEqual(output.structuredContent, failed);
+});
+
+test('matcher tool checks accessibility/DOM offline and fresh with source-specific schemas and modes', async () => {
+  const {tools, driver, calls, selected} = setup();
+  const tool = tools.get('ultron_check_matcher');
+  const ui = {
+    status: 'captured',
+    truncated: false,
+    errors: [],
+    backend: 'automator',
+    roots: [
+      {
+        type: 'AccessibilityNode',
+        text: 'Save',
+        window: {id: 7},
+        dom_status: 'captured',
+        children: [
+          {
+            type: 'DomNode',
+            tagName: 'button',
+            selector: 'button',
+            context: [],
+            attributes: {id: 'save'},
+          },
+        ],
+      },
+    ],
+  };
+  const original = structuredClone(ui);
+  const query = {backend: 'automator', using: 'text', value: 'Save', scope: {windowId: 7}};
+  assert.equal((await tool.execute({...query, snapshot: ui})).structuredContent.status, 'unique');
+  const domQuery = {backend: 'dom', using: 'css selector', value: '#save', scope: {webview: '/roots/0', context: []}};
+  assert.equal((await tool.execute({...domQuery, snapshot: ui})).structuredContent.status, 'unique');
+  assert.deepEqual(ui, original);
+  assert.deepEqual(selected, []);
+  driver.executeScript = async (script, args) => {
+    calls.push([script, args]);
+    return ui;
+  };
+  assert.equal((await tool.execute(query)).isError, false);
+  assert.equal((await tool.execute(domQuery)).isError, false);
+  assert.deepEqual(
+    calls.map(([, [args]]) => args.mode),
+    ['automator', 'ultron'],
+  );
+  assert.equal(
+    (await tool.execute({...domQuery, value: '.not-saved', snapshot: ui})).structuredContent.status,
+    'unsupported',
+  );
+  assert.equal((await tool.execute({...domQuery, value: '#missing', snapshot: ui})).isError, true);
+  for (const backend of ['automator', 'dom']) {
+    assert.equal(
+      (await tools.get('ultron_element').execute({backend, using: 'id', value: 'save', action: 'click'})).isError,
+      true,
+    );
+  }
+  assert.equal(calls.length, 2);
 });
 
 test('named state assertions compile to canonical Espresso conditions, preserving scope and timeout', async () => {

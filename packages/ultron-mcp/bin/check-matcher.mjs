@@ -9,7 +9,7 @@ const {values} = parseArgs({
 });
 if (values.help) {
   process.stdout.write(
-    'node bin/check-matcher.mjs --snapshot dump.json --query query.json\nQuery: {backend:"espresso",matcher:{...}} or {backend:"compose",using:"-android viewtag",value:"save"}.\nExit: 0 unique, 1 not_found/ambiguous, 2 unsupported/indeterminate.\n',
+    'node bin/check-matcher.mjs --snapshot dump.json --query query.json\nQuery: {backend:"espresso",matcher:{...}}, {backend:"compose",using:"-android viewtag",value:"save"}, {backend:"automator",using:"text",value:"Save",scope:{windowId:1}} or {backend:"dom",using:"css selector",value:"button#save",scope:{webview:"/roots/0",context:[]}}.\nExit: 0 unique, 1 not_found/ambiguous, 2 unsupported/indeterminate.\n',
   );
 } else {
   try {

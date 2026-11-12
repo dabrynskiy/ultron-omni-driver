@@ -6,7 +6,7 @@ export const executeMethodMap = {
 
   'mobile: ultronSnapshot': {
     command: 'mobileUltronSnapshot',
-    params: {optional: ['maxDepth', 'maxNodes', 'useUnmergedTree']},
+    params: {optional: ['maxDepth', 'maxNodes', 'useUnmergedTree', 'mode']},
   },
   'mobile: ultronAct': {
     command: 'mobileUltronAct',
@@ -32,6 +32,25 @@ export const executeMethodMap = {
       required: ['matcher'],
       optional: ['assertion', 'text', 'expected', 'condition', 'options', 'useUnmergedTree', 'timeoutMs', 'name'],
     },
+  },
+  'mobile: ultronAutomatorAct': {
+    command: 'mobileUltronAutomatorAct',
+    params: {required: ['strategy', 'locator', 'action'], optional: ['text', 'packageName', 'index', 'timeoutMs']},
+  },
+  'mobile: ultronAutomatorAssert': {
+    command: 'mobileUltronAutomatorAssert',
+    params: {
+      required: ['strategy', 'locator'],
+      optional: ['assertion', 'text', 'expected', 'packageName', 'index', 'timeoutMs'],
+    },
+  },
+  'mobile: ultronWebAct': {
+    command: 'mobileUltronWebAct',
+    params: {required: ['webViewMatcher', 'locator', 'action'], optional: ['text', 'frames', 'timeoutMs']},
+  },
+  'mobile: ultronWebAssert': {
+    command: 'mobileUltronWebAssert',
+    params: {required: ['webViewMatcher', 'locator'], optional: ['assertion', 'text', 'frames', 'timeoutMs']},
   },
   'mobile: ultronLastResult': {command: 'mobileUltronLastResult'},
   'mobile: ultronBatch': {

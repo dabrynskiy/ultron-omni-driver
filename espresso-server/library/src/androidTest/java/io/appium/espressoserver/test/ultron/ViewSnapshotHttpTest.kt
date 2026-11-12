@@ -187,6 +187,35 @@ class ViewSnapshotHttpTest {
 
     private fun viewMatcher(id: Int) = """{"class":"LlmViewMatchers","name":"propertyEquals","args":["viewId",$id]}"""
 
+    @Test fun snapshotModesPersistForTheSessionAndCanBeOverriddenPerObservation() = withSession { session, _ ->
+        fun snapshot(body: String = "{}") = request(session, "ultron_snapshot", body).getAsJsonObject("value")
+        assertEquals("ultron", snapshot()["mode"].asString)
+        rawRequest("/session/$session/appium/settings", """{"settings":{"ultronSnapshotMode":"automator"}}""")
+        assertEquals("automator", snapshot()["backend"].asString)
+        assertEquals("espresso", snapshot("""{"mode":"ultron"}""")["backend"].asString)
+        assertEquals("automator", snapshot()["mode"].asString)
+        val act = request(session, "ultron_act",
+            """{"matcher":${viewMatcher(UltronActionActivity.BUTTON_ID)},"action":"click","timeoutMs":0}""").getAsJsonObject("value")
+        assertEquals("success", act.getAsJsonObject("operation")["status"].asString)
+        assertEquals("automator", act.getAsJsonObject("snapshot")["backend"].asString)
+        val failed = request(session, "ultron_batch",
+            """{"steps":[{"id":"fail","command":"ultronAssert","params":{"matcher":${viewMatcher(UltronActionActivity.BUTTON_ID)},"exists":false,"timeoutMs":0}}]}""").getAsJsonObject("value")
+        assertEquals("failure", failed["status"].asString)
+        assertEquals("automator", failed.getAsJsonArray("steps")[0].asJsonObject.getAsJsonObject("snapshot")["backend"].asString)
+        GlobalSession.create(SessionParams.W3CCapabilities(emptyList(), emptyMap()))
+        assertEquals("ultron", io.appium.espressoserver.lib.llm.SnapshotCapture.mode)
+    }
+
+    @Test fun invalidSnapshotModesAndDomOverridesAreRejectedOverHttp() = withSession { session, _ ->
+        for (body in listOf("""{"mode":"auto"}""", """{"mode":"dom"}""", """{"mode":null}""",
+            """{"maxNodes":2.5}""", """{"useUnmergedTree":"false"}""", """{"includeDom":false}""")) {
+            val response = rawRequest("/session/$session/appium/execute_mobile/ultron_snapshot", body, 400)
+            assertEquals(body, "invalid argument", response.getAsJsonObject("value")["error"].asString)
+        }
+        rawRequest("/session/$session/appium/settings", """{"settings":{"ultronSnapshotMode":"dom"}}""", 400)
+        assertEquals("ultron", io.appium.espressoserver.lib.llm.SnapshotCapture.mode)
+    }
+
     @Test fun recyclerHttpRouteSelectsOffscreenRowsAndRejectsInvalidArguments() = withSession { session, scenario ->
         scenario.onActivity { activity ->
             val recycler = CustomFeedView(activity).apply {

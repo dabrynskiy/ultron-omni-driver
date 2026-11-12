@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
 import androidx.test.espresso.Root
 import com.atiurin.ultron.core.config.UltronConfig
 import java.util.UUID
@@ -21,6 +22,8 @@ data class ViewSnapshot(
     val errors: List<String>,
     val capturedAtMs: Long,
     val durationMs: Long,
+    val mode: String = if (backend == "automator") "automator" else "ultron",
+    val context: Map<String, Any?>? = null,
 )
 
 /** Compose access lives in the flavor bridge; all nodes share one traversal budget. */
@@ -30,6 +33,7 @@ class ViewHierarchyDumper(
     private val uiTimeoutMs: Long = 2000,
     private val roots: () -> List<Root> = { UltronConfig.Espresso.activeRootLister.listActiveRoots() },
     private val useUnmergedTree: Boolean = true,
+    private val onWebView: (WebView, MutableMap<String, Any?>, Int) -> Unit = { _, _, _ -> },
 ) {
     init { require(maxDepth in 0..100 && maxNodes in 1..10000 && uiTimeoutMs > 0) }
 
@@ -79,6 +83,7 @@ class ViewHierarchyDumper(
             count++
             val fieldErrors = mutableListOf<String>()
             val result = node.read { name, error -> fieldErrors.add("$name: $error") }.toMutableMap()
+            if (node is ViewNode && node.view is WebView) onWebView(node.view, result, depth)
             if (fieldErrors.isNotEmpty()) {
                 result["errors"] = fieldErrors
                 errors.addAll(fieldErrors)
@@ -112,7 +117,7 @@ class ViewHierarchyDumper(
         }
     }
 
-    private inner class ViewNode(private val view: View) : SnapshotNode {
+    private inner class ViewNode(val view: View) : SnapshotNode {
         override fun read(onError: (String, Throwable) -> Unit) = ViewProperties.read(view, onError = onError)
 
         override fun children(): Sequence<SnapshotNode> = sequence {

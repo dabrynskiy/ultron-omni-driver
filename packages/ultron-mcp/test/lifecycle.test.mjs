@@ -153,7 +153,7 @@ test(
   async (t) => {
     const f = await fixture(t);
     const {client, call} = await f.connect();
-    assert.equal((await client.listTools()).tools.length, 19);
+    assert.equal((await client.listTools()).tools.length, 23);
     assert.equal((await call('ultron_session', {action: 'status'})).structuredContent.phase, 'idle');
     assert.equal((await call('ultron_snapshot', {maxDepth: -1})).isError, true);
     assert.equal((await call('ultron_snapshot', {sessionId: 'foreign'})).isError, true);
